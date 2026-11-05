@@ -65,6 +65,8 @@ class UserResponse(BaseModel):
 class TripCreateRequest(BaseModel):
     title: str = Field(..., min_length=1, max_length=200)
     destination: str = Field(default="Lisbon", min_length=1)
+    country: Optional[str] = Field(default=None)
+    currency: Optional[str] = Field(default=None)
     max_participants: int = Field(default=10, ge=2, le=50)
 
 
@@ -84,6 +86,9 @@ class TripResponse(BaseModel):
     id: int
     title: str
     destination: str
+    country: str = "Portugal"
+    currency: str = "EUR"
+    currency_symbol: str = "€"
     invite_code: str
     max_participants: int
     creator_id: int
@@ -106,6 +111,9 @@ class VenueResponse(BaseModel):
     venueId: str
     name: str
     category: str
+    destination: str = "Lisbon"
+    country: str = "Portugal"
+    currency: str = "EUR"
     pricePerPerson: float
     dietaryTags: List[str]
     hours: HoursDict

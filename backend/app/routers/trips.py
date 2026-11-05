@@ -9,6 +9,7 @@ from app.db import get_db
 from app.models import Trip, TripMember, User
 from app.schemas import TripCreateRequest, TripJoinRequest, TripResponse, TripMemberResponse
 from app.security import current_user, require_role, get_room_role
+from app.destinations import resolve_country_and_currency
 
 router = APIRouter(prefix="/api/v1/trips", tags=["Trips"])
 
@@ -26,10 +27,21 @@ async def create_trip(
     db: AsyncSession = Depends(get_db)
 ):
     invite_code = generate_invite_code()
-    
+
+    # Resolve country, destination, currency, and symbol dynamically
+    country, destination, currency, symbol, _, _ = resolve_country_and_currency(
+        country=req.country,
+        destination=req.destination
+    )
+    if req.currency:
+        currency = req.currency
+
     trip = Trip(
         title=req.title,
-        destination=req.destination,
+        destination=destination,
+        country=country,
+        currency=currency,
+        currency_symbol=symbol,
         invite_code=invite_code,
         max_participants=req.max_participants,
         creator_id=user.id
@@ -51,6 +63,9 @@ async def create_trip(
         id=trip.id,
         title=trip.title,
         destination=trip.destination,
+        country=trip.country,
+        currency=trip.currency,
+        currency_symbol=trip.currency_symbol,
         invite_code=trip.invite_code,
         max_participants=trip.max_participants,
         creator_id=trip.creator_id,
@@ -73,21 +88,26 @@ async def join_trip(
     # Check existing membership
     mem_stmt = select(TripMember).where(TripMember.trip_id == trip.id, TripMember.user_id == user.id)
     existing_member = (await db.execute(mem_stmt)).scalar_one_or_none()
+
+    count_stmt = select(func.count(TripMember.user_id)).where(TripMember.trip_id == trip.id)
+    current_count = (await db.execute(count_stmt)).scalar() or 0
+
     if existing_member:
         return TripResponse(
             id=trip.id,
             title=trip.title,
             destination=trip.destination,
+            country=trip.country or "Portugal",
+            currency=trip.currency or "EUR",
+            currency_symbol=trip.currency_symbol or "€",
             invite_code=trip.invite_code,
             max_participants=trip.max_participants,
             creator_id=trip.creator_id,
             created_at=trip.created_at,
-            members_count=1
+            members_count=current_count
         )
 
     # Check capacity limit
-    count_stmt = select(func.count(TripMember.user_id)).where(TripMember.trip_id == trip.id)
-    current_count = (await db.execute(count_stmt)).scalar() or 0
     if current_count >= trip.max_participants:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -108,6 +128,9 @@ async def join_trip(
         id=trip.id,
         title=trip.title,
         destination=trip.destination,
+        country=trip.country or "Portugal",
+        currency=trip.currency or "EUR",
+        currency_symbol=trip.currency_symbol or "€",
         invite_code=trip.invite_code,
         max_participants=trip.max_participants,
         creator_id=trip.creator_id,
@@ -135,6 +158,9 @@ async def list_my_trips(
             id=trip.id,
             title=trip.title,
             destination=trip.destination,
+            country=trip.country or "Portugal",
+            currency=trip.currency or "EUR",
+            currency_symbol=trip.currency_symbol or "€",
             invite_code=trip.invite_code,
             max_participants=trip.max_participants,
             creator_id=trip.creator_id,

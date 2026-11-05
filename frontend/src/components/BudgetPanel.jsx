@@ -1,9 +1,19 @@
 import React from 'react';
 import { DollarSign, AlertCircle, PieChart, CheckCircle2 } from 'lucide-react';
 
-export default function BudgetPanel({ budgetTotals = {}, members = [], conflicts = [] }) {
+export default function BudgetPanel({
+  budgetTotals = {},
+  members = [],
+  conflicts = [],
+  currencySymbol = '€',
+  currency = 'EUR'
+}) {
   const formatCurrency = (cents) => {
-    return `€${(Number(cents || 0) / 100).toFixed(2)}`;
+    const val = Number(cents || 0) / 100;
+    if (currencySymbol === '¥' || currencySymbol === '₩') {
+      return `${currencySymbol}${Math.round(val).toLocaleString()}`;
+    }
+    return `${currencySymbol}${val.toFixed(2)}`;
   };
 
   const budgetBreaches = conflicts.filter(c => c.type === 'budgetBreach');

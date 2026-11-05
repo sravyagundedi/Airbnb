@@ -33,6 +33,15 @@ export default function App() {
     }
   }, []);
 
+  // Reload venues when current trip destination changes
+  useEffect(() => {
+    if (currentTrip?.destination) {
+      api.getVenues(currentTrip.destination, null, null, null, currentTrip.country)
+        .then(setVenuesCatalog)
+        .catch(console.error);
+    }
+  }, [currentTrip]);
+
   // WebSocket hook for the active room
   const token = authStorage.getAccessToken();
   const room = useRoomSocket(currentTrip?.id, token);
@@ -111,6 +120,8 @@ export default function App() {
               onRemove={room.removeItem}
               onOpenVote={room.openVote}
               venuesCatalog={venuesCatalog}
+              currencySymbol={currentTrip.currency_symbol || currentTrip.currencySymbol || '€'}
+              destination={currentTrip.destination}
             />
 
             {/* Right Tabs and Panel (Concierge vs Chat) */}
@@ -160,6 +171,9 @@ export default function App() {
                     tripId={currentTrip.id}
                     onPinVenue={room.pinVenue}
                     venuesCatalog={venuesCatalog}
+                    destination={currentTrip.destination}
+                    country={currentTrip.country}
+                    currencySymbol={currentTrip.currency_symbol || currentTrip.currencySymbol || '€'}
                   />
                 ) : (
                   <ChatPanel
@@ -191,6 +205,8 @@ export default function App() {
             budgetTotals={room.budgetTotals}
             members={room.members}
             conflicts={room.conflicts}
+            currencySymbol={currentTrip.currency_symbol || currentTrip.currencySymbol || '€'}
+            currency={currentTrip.currency || 'EUR'}
           />
         </div>
       )}

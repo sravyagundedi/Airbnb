@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from math import cos, radians
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,6 +9,7 @@ from app.db import get_db
 from app.models import VenueMetadata, VenueDietaryTag
 from app.schemas import VenueResponse, HoursDict, CoordinatesDict
 from app.concierge.constraints import haversine_km
+from app.destinations import COUNTRY_DIRECTORY, resolve_country_and_currency, generate_local_places_for_destination
 
 router = APIRouter(tags=["Venues"])
 
@@ -18,6 +19,9 @@ def format_venue(v: VenueMetadata, tags: List[str]) -> VenueResponse:
         venueId=v.id,
         name=v.name,
         category=v.category,
+        destination=v.destination or "Lisbon",
+        country=v.country or "Portugal",
+        currency=v.currency or "EUR",
         pricePerPerson=v.price_per_person,
         dietaryTags=tags,
         hours=HoursDict(open=v.open_time, close=v.close_time),
@@ -27,9 +31,26 @@ def format_venue(v: VenueMetadata, tags: List[str]) -> VenueResponse:
     )
 
 
+@router.get("/api/v1/destinations/countries")
+async def list_countries():
+    """Returns directory of countries with flags, currencies, symbols, and default cities."""
+    countries_list = []
+    for name, data in COUNTRY_DIRECTORY.items():
+        countries_list.append({
+            "country": name,
+            "flag": data["flag"],
+            "currency": data["currency"],
+            "symbol": data["symbol"],
+            "defaultCity": data["default_city"],
+            "cities": data["cities"]
+        })
+    return countries_list
+
+
 @router.get("/api/v1/destinations/{destination}/venues", response_model=List[VenueResponse])
 async def get_destination_venues(
     destination: str,
+    country: Optional[str] = Query(None, description="Optional country name for disambiguation"),
     near: Optional[str] = Query(None, description="Anchor coordinates as 'lat,lng' e.g. '38.7139,-9.1394'"),
     radiusKm: Optional[float] = Query(None, description="Filter radius in kilometers e.g. 2.0"),
     category: Optional[str] = Query(None),
@@ -37,7 +58,7 @@ async def get_destination_venues(
 ):
     stmt = (
         select(VenueMetadata)
-        .where(VenueMetadata.destination.ilike(destination))
+        .where(VenueMetadata.destination.ilike(destination.strip()))
         .options(selectinload(VenueMetadata.dietary_tags))
     )
 
@@ -65,6 +86,55 @@ async def get_destination_venues(
 
     result = await db.execute(stmt)
     venues = result.scalars().all()
+
+    # If no venues exist for this destination, dynamically generate authentic local places
+    # calibrated with country-specific currency and coordinates
+    if not venues and not category and not near:
+        resolved_country, resolved_dest, currency, symbol, base_lat, base_lng = resolve_country_and_currency(
+            country=country,
+            destination=destination
+        )
+        generated = generate_local_places_for_destination(
+            destination=resolved_dest,
+            country=resolved_country,
+            currency=currency,
+            symbol=symbol,
+            base_lat=base_lat,
+            base_lng=base_lng
+        )
+
+        for item in generated:
+            vid = item["venueId"]
+            v = VenueMetadata(
+                id=vid,
+                name=item["name"],
+                category=item["category"],
+                price_per_person=float(item["pricePerPerson"]),
+                destination=resolved_dest,
+                country=resolved_country,
+                currency=currency,
+                lat=float(item["coordinates"]["lat"]),
+                lng=float(item["coordinates"]["lng"]),
+                rating=float(item["rating"]),
+                open_time=item["hours"]["open"],
+                close_time=item["hours"]["close"],
+                open_min=int(item["hours"]["open"].split(":")[0]) * 60 + int(item["hours"]["open"].split(":")[1]),
+                close_min=int(item["hours"]["close"].split(":")[0]) * 60 + int(item["hours"]["close"].split(":")[1]),
+                description=item.get("description", "")
+            )
+            db.add(v)
+            for tag in item.get("dietaryTags", []):
+                db.add(VenueDietaryTag(venue_id=vid, tag=tag.lower()))
+
+        await db.commit()
+
+        # Re-query
+        re_result = await db.execute(
+            select(VenueMetadata)
+            .where(VenueMetadata.destination.ilike(destination.strip()))
+            .options(selectinload(VenueMetadata.dietary_tags))
+        )
+        venues = re_result.scalars().all()
 
     out = []
     for v in venues:

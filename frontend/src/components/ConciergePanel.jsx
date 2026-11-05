@@ -2,18 +2,25 @@ import React, { useState } from 'react';
 import { Sparkles, Compass, AlertCircle, CheckCircle, Clock, MapPin, Plus } from 'lucide-react';
 import { api } from '../api';
 
-const SAMPLE_PROMPTS = [
-  'Where can we have a vegetarian dinner under $25 near Chiado?',
-  'Recommend a historic morning tour in central Lisbon',
-  'Best rooftop bar for sunset drinks under $20/person',
-  'Authentic Portuguese seafood dinner with gluten-free options'
-];
-
-export default function ConciergePanel({ tripId, onPinVenue, venuesCatalog = [] }) {
+export default function ConciergePanel({
+  tripId,
+  onPinVenue,
+  venuesCatalog = [],
+  destination = 'Lisbon',
+  country = 'Portugal',
+  currencySymbol = '€'
+}) {
   const [question, setQuestion] = useState('');
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState(null);
   const [error, setError] = useState(null);
+
+  const samplePrompts = [
+    `Where can we have a vegetarian dinner under ${currencySymbol}35 in central ${destination}?`,
+    `Recommend a historic morning tour in ${destination}`,
+    `Best rooftop lounge for drinks under ${currencySymbol}25/person in ${destination}`,
+    `Authentic ${country} dinner with gluten-free options`
+  ];
 
   const handleAsk = async (queryText) => {
     const q = queryText || question;
@@ -95,7 +102,7 @@ export default function ConciergePanel({ tripId, onPinVenue, venuesCatalog = [] 
             gap: '6px'
           }}
         >
-          {loading ? 'Consulting Lisbon Knowledge...' : <><Sparkles size={15} /> Ask Concierge</>}
+          {loading ? `Consulting ${destination} Concierge...` : <><Sparkles size={15} /> Ask Concierge</>}
         </button>
       </form>
 
@@ -105,7 +112,7 @@ export default function ConciergePanel({ tripId, onPinVenue, venuesCatalog = [] 
           Quick Prompt Templates
         </span>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
-          {SAMPLE_PROMPTS.map((p, i) => (
+          {samplePrompts.map((p, i) => (
             <button
               key={i}
               onClick={() => { setQuestion(p); handleAsk(p); }}

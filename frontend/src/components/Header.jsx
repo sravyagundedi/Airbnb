@@ -56,8 +56,28 @@ export default function Header({ user, currentTrip, latencyMs, connected, active
               <ArrowLeft size={16} /> Trips
             </button>
             <span style={{ fontWeight: 700, fontSize: '15px' }}>{currentTrip.title}</span>
-            <span style={{ background: '#F0F2F5', padding: '2px 8px', borderRadius: '12px', fontSize: '12px', fontWeight: 600 }}>
-              {currentTrip.destination} 🇵🇹
+            <span style={{
+              background: '#F0F2F5',
+              padding: '2px 8px',
+              borderRadius: '12px',
+              fontSize: '12px',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}>
+              <span>{currentTrip.destination}</span>
+              {currentTrip.country && <span style={{ color: 'var(--text-muted)' }}>({currentTrip.country})</span>}
+            </span>
+            <span style={{
+              background: '#E0F2FE',
+              color: '#0369A1',
+              padding: '2px 8px',
+              borderRadius: '12px',
+              fontSize: '11px',
+              fontWeight: 700
+            }}>
+              {currentTrip.currency || 'EUR'} ({currentTrip.currency_symbol || currentTrip.currencySymbol || '€'})
             </span>
             <button
               onClick={copyInvite}

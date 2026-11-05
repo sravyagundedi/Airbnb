@@ -92,3 +92,24 @@ Floating point math introduces rounding drift (e.g. 10.00 split 3 ways yields 3.
 Combines collaborative item-item cosine similarity with user feature centroids:
 - **Feature Space**: 7 one-hot categories + 4 multi-hot dietary tags + normalized price.
 - **Offline Evaluation**: 20% holdout test set per user achieves **Precision@5 $\ge$ 0.60** on synthetic Lisbon co-travel groups.
+
+---
+
+## 6. Global Multi-Country & Dynamic Currency Engine
+
+The system supports real-time group planning for **any place in the world**:
+
+### 6.1 Worldwide Country & Currency Resolution
+- **Directory**: Covers 20+ major global destinations across Europe, Asia, the Americas, Middle East, and Oceania with flags, default cities, currency codes, and symbols.
+- **Dynamic Matching**:
+  1. Direct country match (e.g. `Japan` $\to$ `JPY ¥`).
+  2. Inferred country from destination city (e.g. `Paris` $\to$ `France / EUR €`, `Tokyo` $\to$ `Japan / JPY ¥`, `New York` $\to$ `United States / USD $`).
+  3. Fuzzy matching and graceful global default fallback (`USD $`) for custom destinations.
+
+### 6.2 Instant Nearby Place Generation & Seeding
+- If a user creates a war room or searches for venues in any city where prior data is not yet cached, the system dynamically synthesizes authentic local venues (heritage tours, regional bistros, street markets, artisan breakfast spots, rooftop lounges, and museums) with geographical coordinates and local currency price multipliers.
+- Generated venues are persisted with full dietary tags, opening hours, and ratings, allowing instantaneous drag & drop, conflict detection, and RAG AI Concierge answers with cited venue IDs.
+
+### 6.3 Multi-Currency Budgeting & Formatting
+- All internal calculations remain hermetically locked to integer units (e.g. integer cents/sen/pence), preserving the Hamilton-Hare exact-sum invariant across all currencies without floating point loss.
+- Zero-decimal currencies (e.g. `JPY`, `KRW`) and standard 2-decimal currencies (`EUR`, `USD`, `GBP`, `AUD`, `INR`) are formatted accordingly across the canvas, budget panels, and AI Concierge responses.

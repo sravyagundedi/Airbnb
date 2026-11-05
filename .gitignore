@@ -39,6 +39,9 @@ venv/
 ENV/
 env/
 
+# Model artifacts
+backend/reco_artifacts/
+
 # Node & Frontend
 node_modules/
 frontend/dist/

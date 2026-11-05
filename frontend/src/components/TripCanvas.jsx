@@ -13,7 +13,9 @@ export default function TripCanvas({
   onUnlock,
   onRemove,
   onOpenVote,
-  venuesCatalog = []
+  venuesCatalog = [],
+  currencySymbol = '€',
+  destination = 'Lisbon'
 }) {
   const [showCatalogModal, setShowCatalogModal] = useState(false);
   const [selectedDayForPin, setSelectedDayForPin] = useState(1);
@@ -182,7 +184,7 @@ export default function TripCanvas({
                         onClick={() => { setSelectedDayForPin(day); setShowCatalogModal(true); }}
                         style={{ marginTop: '8px', color: 'var(--primary)', fontWeight: 700, fontSize: '12px' }}
                       >
-                        + Pin Lisbon Venue
+                        + Pin Nearby Venue
                       </button>
                     )}
                   </div>
@@ -197,7 +199,9 @@ export default function TripCanvas({
                       onLock={onLock}
                       onUnlock={onUnlock}
                       onRemove={onRemove}
+                      onOpenVote={onOpenVote}
                       hasConflict={dayConflicts.some(c => c.itemIds?.includes(item.id))}
+                      currencySymbol={currencySymbol}
                     />
                   ))
                 )}
@@ -302,7 +306,12 @@ export default function TripCanvas({
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
-                    <span style={{ fontWeight: 700, color: '#10B981', fontSize: '14px' }}>€{v.pricePerPerson}</span>
+                    <span style={{ fontWeight: 700, color: '#10B981', fontSize: '14px' }}>
+                      {currencySymbol}
+                      {currencySymbol === '¥' || currencySymbol === '₩'
+                        ? Math.round(Number(v.pricePerPerson || 0)).toLocaleString()
+                        : Number(v.pricePerPerson || 0).toFixed(2)}
+                    </span>
                     <button
                       onClick={() => handleQuickPin(v)}
                       style={{

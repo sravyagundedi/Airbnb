@@ -74,6 +74,8 @@ async def build_room_snapshot(trip_id: int) -> dict:
 
     # Query recent chat messages (last 50) and participants from DB
     async with get_current_session() as db:
+        trip = await db.get(Trip, trip_id)
+
         chat_stmt = (
             select(ChatMessage)
             .where(ChatMessage.trip_id == trip_id)
@@ -132,6 +134,11 @@ async def build_room_snapshot(trip_id: int) -> dict:
 
     return {
         "tripId": trip_id,
+        "title": trip.title if trip else "Trip",
+        "destination": trip.destination if trip else "Lisbon",
+        "country": trip.country if trip else "Portugal",
+        "currency": trip.currency if trip else "EUR",
+        "currencySymbol": trip.currency_symbol if trip else "€",
         "items": items_snapshot,
         "messages": messages,
         "members": members,

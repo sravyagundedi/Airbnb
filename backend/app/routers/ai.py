@@ -56,6 +56,35 @@ async def ask_ai_concierge(
     venues_res = await db.execute(venues_stmt)
     venues_db = venues_res.scalars().all()
 
+    # Dynamically seed if this is a newly targeted global destination
+    if not venues_db:
+        from app.destinations import resolve_country_and_currency, generate_local_places_for_destination
+        resolved_c, resolved_d, curr, sym, b_lat, b_lng = resolve_country_and_currency(trip.country, trip.destination)
+        gen_places = generate_local_places_for_destination(resolved_d, resolved_c, curr, sym, b_lat, b_lng)
+        for gp in gen_places:
+            v_obj = VenueMetadata(
+                id=gp["venueId"],
+                name=gp["name"],
+                category=gp["category"],
+                price_per_person=float(gp["pricePerPerson"]),
+                destination=resolved_d,
+                country=resolved_c,
+                currency=curr,
+                lat=float(gp["coordinates"]["lat"]),
+                lng=float(gp["coordinates"]["lng"]),
+                rating=float(gp["rating"]),
+                open_time=gp["hours"]["open"],
+                close_time=gp["hours"]["close"],
+                open_min=int(gp["hours"]["open"].split(":")[0]) * 60 + int(gp["hours"]["open"].split(":")[1]),
+                close_min=int(gp["hours"]["close"].split(":")[0]) * 60 + int(gp["hours"]["close"].split(":")[1]),
+                description=gp.get("description", "")
+            )
+            db.add(v_obj)
+        await db.commit()
+        # Re-query
+        re_res = await db.execute(venues_stmt)
+        venues_db = re_res.scalars().all()
+
     candidates = [
         VenueCandidate(
             id=v.id,
@@ -86,7 +115,9 @@ async def ask_ai_concierge(
         all_venues=candidates,
         travelers_dietary=frozenset(all_dietary),
         travelers_min_ceiling=float(min_ceiling),
-        anchor_coords=anchor_coords
+        anchor_coords=anchor_coords,
+        currency_symbol=trip.currency_symbol or "€",
+        destination=trip.destination
     )
 
     # 4. Persist AI answer in chat

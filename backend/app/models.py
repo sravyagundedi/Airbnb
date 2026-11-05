@@ -32,6 +32,9 @@ class Trip(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(200), nullable=False)
     destination = Column(String(100), default="Lisbon", nullable=False, index=True)
+    country = Column(String(100), default="Portugal", nullable=False, index=True)
+    currency = Column(String(10), default="EUR", nullable=False)
+    currency_symbol = Column(String(10), default="€", nullable=False)
     invite_code = Column(String(20), unique=True, index=True, nullable=False)
     max_participants = Column(Integer, default=10, nullable=False)
     creator_id = Column(Integer, ForeignKey("users.id"), nullable=False)
@@ -66,6 +69,8 @@ class VenueMetadata(Base):
     category = Column(String(50), nullable=False)
     price_per_person = Column(Float, nullable=False)
     destination = Column(String(100), default="Lisbon", nullable=False)
+    country = Column(String(100), default="Portugal", nullable=False, index=True)
+    currency = Column(String(10), default="EUR", nullable=False)
     lat = Column(Float, nullable=False)
     lng = Column(Float, nullable=False)
     rating = Column(Float, default=4.0, nullable=False)
@@ -78,6 +83,7 @@ class VenueMetadata(Base):
 
     __table_args__ = (
         Index("ix_venue_dest_lat_lng", "destination", "lat", "lng"),
+        Index("ix_venue_country", "country"),
     )
 
     dietary_tags = relationship("VenueDietaryTag", back_populates="venue", cascade="all, delete-orphan")

@@ -39,13 +39,26 @@ Returns current authenticated user profile. Requires `Authorization: Bearer <tok
 ## 2. Trip Rooms Endpoints
 
 ### `POST /api/v1/trips`
-Creates a new trip room. The creator is assigned role `leader` in `trip_members`.
+Creates a new trip room for any destination in the world with automatic country and local currency resolution. The creator is assigned role `leader` in `trip_members`.
+- **Request Body**:
+```json
+{
+  "title": "Tokyo Cherry Blossom Adventure",
+  "destination": "Tokyo",
+  "country": "Japan",
+  "currency": "JPY",
+  "max_participants": 10
+}
+```
 - **Response** (`201 Created`):
 ```json
 {
   "id": 1,
-  "title": "Lisbon Summer Retreat",
-  "destination": "Lisbon",
+  "title": "Tokyo Cherry Blossom Adventure",
+  "destination": "Tokyo",
+  "country": "Japan",
+  "currency": "JPY",
+  "currency_symbol": "¥",
   "invite_code": "AB-K9X2",
   "max_participants": 10,
   "creator_id": 2,
@@ -53,6 +66,9 @@ Creates a new trip room. The creator is assigned role `leader` in `trip_members`
   "members_count": 1
 }
 ```
+
+### `GET /api/v1/destinations/countries`
+Returns the worldwide directory of supported countries, flags, currencies, symbols, default cities, and metropolitan centers.
 
 ### `POST /api/v1/trips/join`
 Joins a trip room using an invite code. Enforces `max_participants`.

@@ -80,7 +80,12 @@ def parse_question_to_req(
     )
 
 
-async def call_llm_or_fallback(candidates: List[VenueCandidate], question: str) -> Tuple[Optional[str], str]:
+async def call_llm_or_fallback(
+    candidates: List[VenueCandidate],
+    question: str,
+    currency_symbol: str = "€",
+    destination: str = "Lisbon"
+) -> Tuple[Optional[str], str]:
     """
     Calls LLM with candidates and question, with 2.5s strict timeout.
     Falls back gracefully to deterministic grounded template on error/timeout/mock.
@@ -89,9 +94,14 @@ async def call_llm_or_fallback(candidates: List[VenueCandidate], question: str) 
         return (None, "No candidates found.")
 
     top_choice = candidates[0]
+    price_formatted = (
+        f"{currency_symbol}{top_choice.price_per_person:,.0f}"
+        if currency_symbol in ["¥", "₩", "₹"]
+        else f"{currency_symbol}{top_choice.price_per_person:.2f}"
+    )
     fallback_answer = (
         f"Based on your requirements, I recommend {top_choice.name} ({top_choice.category}). "
-        f"It costs approximately €{top_choice.price_per_person:.2f} per person and holds a "
+        f"It costs approximately {price_formatted} per person and holds a "
         f"{top_choice.rating}★ rating. {top_choice.description}"
     )
 
@@ -129,7 +139,7 @@ async def call_llm_or_fallback(candidates: List[VenueCandidate], question: str) 
             payload = {
                 "model": settings.LLM_MODEL,
                 "messages": [
-                    {"role": "system", "content": "You are Lisbon AI Concierge for group trip planning."},
+                    {"role": "system", "content": f"You are the AI Concierge for {destination} group trip planning."},
                     {"role": "user", "content": prompt}
                 ],
                 "temperature": 0.2,
@@ -159,6 +169,8 @@ async def execute_concierge_query(
     travelers_dietary: frozenset,
     travelers_min_ceiling: float,
     anchor_coords: Optional[Tuple[float, float]] = None,
+    currency_symbol: str = "€",
+    destination: str = "Lisbon"
 ) -> Dict[str, Any]:
     t0 = time.perf_counter()
 
@@ -184,9 +196,9 @@ async def execute_concierge_query(
         if eliminators:
             worst_constraint, count = max(eliminators.items(), key=lambda x: x[1])
             hedge_msg = (
-                f"No venue in the Lisbon dataset satisfies all group constraints for {req.category}. "
+                f"No venue in the {destination} dataset satisfies all group constraints for {req.category}. "
                 f"The '{worst_constraint}' rule eliminated {count} candidate(s). "
-                f"Consider relaxing your {worst_constraint} constraint (current budget ceiling: €{req.ceiling}, "
+                f"Consider relaxing your {worst_constraint} constraint (current budget ceiling: {currency_symbol}{req.ceiling}, "
                 f"dietary: {list(req.dietary)}, radius: {req.radius_km} km)."
             )
         else:
@@ -205,28 +217,44 @@ async def execute_concierge_query(
         }
 
     # 4. Generate answer via LLM or template
-    suggested_id, raw_answer = await call_llm_or_fallback(top_candidates, question)
+    suggested_id, raw_answer = await call_llm_or_fallback(
+        top_candidates,
+        question,
+        currency_symbol=currency_symbol,
+        destination=destination
+    )
 
     # 5. Code-side validation
     valid_ids = {c.id for c in top_candidates}
     venue_map = {c.id: c for c in top_candidates}
+
+    price_str = (
+        f"{currency_symbol}{top_candidates[0].price_per_person:,.0f}"
+        if currency_symbol in ["¥", "₩", "₹"]
+        else f"{currency_symbol}{top_candidates[0].price_per_person:.2f}"
+    )
 
     if suggested_id not in valid_ids:
         # Hallucinated or invalid ID discarded; substitute top ranked candidate
         suggested_id = top_candidates[0].id
         chosen_venue = top_candidates[0]
         raw_answer = (
-            f"I recommend {chosen_venue.name} in Lisbon. "
-            f"It fits your group's budget at €{chosen_venue.price_per_person:.2f}/person with a "
+            f"I recommend {chosen_venue.name} in {destination}. "
+            f"It fits your group's budget at {price_str}/person with a "
             f"{chosen_venue.rating}★ rating. {chosen_venue.description}"
         )
 
     chosen_venue = venue_map[suggested_id]
+    venue_price_str = (
+        f"{currency_symbol}{chosen_venue.price_per_person:,.0f}"
+        if currency_symbol in ["¥", "₩", "₹"]
+        else f"{currency_symbol}{chosen_venue.price_per_person:.2f}"
+    )
 
     # Enforce correct DB price in text (replace hallucinated prices)
     verified_answer = re.sub(
-        r"(?:€|\$)\s*\d+(?:\.\d+)?",
-        f"€{chosen_venue.price_per_person:.2f}",
+        r"(?:€|\$|£|¥|₹)\s*\d+(?:\.\d+)?",
+        venue_price_str,
         raw_answer
     )
 

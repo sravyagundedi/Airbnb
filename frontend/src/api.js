@@ -77,19 +77,30 @@ export const api = {
   getDashboard: () => request('/me/dashboard'),
 
   // Trips
-  createTrip: (title, destination = 'Lisbon', maxParticipants = 10) =>
-    request('/trips', { method: 'POST', body: JSON.stringify({ title, destination, max_participants: maxParticipants }) }),
+  createTrip: (title, destination = 'Lisbon', country = 'Portugal', currency = 'EUR', maxParticipants = 10) =>
+    request('/trips', {
+      method: 'POST',
+      body: JSON.stringify({
+        title,
+        destination,
+        country,
+        currency,
+        max_participants: maxParticipants
+      })
+    }),
   joinTrip: (inviteCode) => request('/trips/join', { method: 'POST', body: JSON.stringify({ inviteCode }) }),
   getMyTrips: () => request('/trips'),
   getTripMembers: (tripId) => request(`/trips/${tripId}/members`),
   getTripAnalytics: (tripId) => request(`/trips/${tripId}/analytics`),
 
-  // Venues
-  getVenues: (destination = 'Lisbon', near, radiusKm, category) => {
+  // Global Destinations & Venues
+  getCountries: () => request('/destinations/countries'),
+  getVenues: (destination = 'Lisbon', near, radiusKm, category, country) => {
     const params = new URLSearchParams();
     if (near) params.set('near', near);
     if (radiusKm) params.set('radiusKm', radiusKm);
     if (category) params.set('category', category);
+    if (country) params.set('country', country);
     return request(`/destinations/${destination}/venues?${params.toString()}`);
   },
   getRecommendations: (userId, topK = 6) => request(`/recommendations?top_k=${topK}`),

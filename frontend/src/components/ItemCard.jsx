@@ -10,7 +10,8 @@ export default function ItemCard({
   onUnlock,
   onRemove,
   onOpenVote,
-  hasConflict
+  hasConflict,
+  currencySymbol = '€'
 }) {
   const [editingTime, setEditingTime] = useState(false);
   const [startT, setStartT] = useState(item.startTime || '12:00');
@@ -94,7 +95,12 @@ export default function ItemCard({
           <span>{item.startTime} - {item.endTime}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '2px', fontWeight: 700, color: '#10B981' }}>
-          <span>€{Number(item.pricePerPerson || 0).toFixed(2)}</span>
+          <span>
+            {currencySymbol}
+            {currencySymbol === '¥' || currencySymbol === '₩'
+              ? Math.round(Number(item.pricePerPerson || 0)).toLocaleString()
+              : Number(item.pricePerPerson || 0).toFixed(2)}
+          </span>
           <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 400 }}>/person</span>
         </div>
       </div>
