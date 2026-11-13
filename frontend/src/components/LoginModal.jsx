@@ -28,15 +28,15 @@ export default function LoginModal({ onLoginSuccess }) {
       let tokens;
       if (isRegister) {
         tokens = await api.register({
-          email,
+          email: email.trim(),
           password,
-          display_name: displayName,
+          display_name: displayName.trim(),
           role,
           budget_ceiling: Number(budgetCeiling),
           dietary_tags: dietaryTags
         });
       } else {
-        tokens = await api.login(email, password);
+        tokens = await api.login(email.trim(), password);
       }
 
       authStorage.saveTokens(tokens.access_token, tokens.refresh_token);
@@ -44,7 +44,10 @@ export default function LoginModal({ onLoginSuccess }) {
       authStorage.saveTokens(tokens.access_token, tokens.refresh_token, user);
       onLoginSuccess(user);
     } catch (err) {
-      setError(err.message || 'Authentication failed');
+      const msg = typeof err === 'string'
+        ? err
+        : (err?.message && err.message !== '[object Object]' ? err.message : 'Authentication failed. Please verify your credentials.');
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -89,7 +92,7 @@ export default function LoginModal({ onLoginSuccess }) {
         </div>
 
         {/* Tab switch */}
-        <div style={{ display: 'flex', background: '#F1F3F5', borderRadius: '10px', padding: '3px', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', background: '#F1F3F5', borderRadius: '10px', padding: '3px', marginBottom: '16px' }}>
           <button
             type="button"
             onClick={() => { setIsRegister(false); setError(null); }}
@@ -124,6 +127,83 @@ export default function LoginModal({ onLoginSuccess }) {
           </button>
         </div>
 
+        {/* Quick Demo Switcher */}
+        {!isRegister && (
+          <div style={{
+            background: '#F8F9FA',
+            border: '1px solid var(--border)',
+            borderRadius: '10px',
+            padding: '10px 12px',
+            marginBottom: '16px'
+          }}>
+            <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>
+              One-Click Demo Accounts
+            </span>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('leader@warroom.local');
+                  setPassword('Password123!');
+                  setError(null);
+                }}
+                style={{
+                  flex: 1,
+                  padding: '6px 8px',
+                  borderRadius: '6px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  background: email === 'leader@warroom.local' ? '#FFE4E6' : '#FFFFFF',
+                  color: email === 'leader@warroom.local' ? 'var(--primary)' : 'var(--text-main)',
+                  border: email === 'leader@warroom.local' ? '1px solid var(--primary)' : '1px solid var(--border)'
+                }}
+              >
+                👑 Leader
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('planner@warroom.local');
+                  setPassword('Password123!');
+                  setError(null);
+                }}
+                style={{
+                  flex: 1,
+                  padding: '6px 8px',
+                  borderRadius: '6px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  background: email === 'planner@warroom.local' ? '#FFE4E6' : '#FFFFFF',
+                  color: email === 'planner@warroom.local' ? 'var(--primary)' : 'var(--text-main)',
+                  border: email === 'planner@warroom.local' ? '1px solid var(--primary)' : '1px solid var(--border)'
+                }}
+              >
+                📝 Planner
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('admin@warroom.local');
+                  setPassword('Password123!');
+                  setError(null);
+                }}
+                style={{
+                  flex: 1,
+                  padding: '6px 8px',
+                  borderRadius: '6px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  background: email === 'admin@warroom.local' ? '#FFE4E6' : '#FFFFFF',
+                  color: email === 'admin@warroom.local' ? 'var(--primary)' : 'var(--text-main)',
+                  border: email === 'admin@warroom.local' ? '1px solid var(--primary)' : '1px solid var(--border)'
+                }}
+              >
+                🛡️ Admin
+              </button>
+            </div>
+          </div>
+        )}
+
         {error && (
           <div style={{
             background: '#FEF2F2',
@@ -138,7 +218,7 @@ export default function LoginModal({ onLoginSuccess }) {
             gap: '6px'
           }}>
             <ShieldAlert size={15} />
-            <span>{error}</span>
+            <span>{typeof error === 'string' ? error : JSON.stringify(error)}</span>
           </div>
         )}
 

@@ -64,7 +64,25 @@ async function request(endpoint, options = {}) {
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(data.detail?.message || data.detail || response.statusText || 'Request failed');
+    let errorMsg = response.statusText || `Request failed with status ${response.status}`;
+    if (typeof data.detail === 'string') {
+      errorMsg = data.detail;
+    } else if (Array.isArray(data.detail)) {
+      errorMsg = data.detail
+        .map(d => {
+          if (typeof d === 'string') return d;
+          const field = d.loc && d.loc.length ? d.loc[d.loc.length - 1] : '';
+          return field ? `${field}: ${d.msg}` : (d.msg || JSON.stringify(d));
+        })
+        .join('; ');
+    } else if (data.detail && typeof data.detail === 'object') {
+      errorMsg = data.detail.message || data.detail.msg || data.detail.error || JSON.stringify(data.detail);
+    } else if (data.message && typeof data.message === 'string') {
+      errorMsg = data.message;
+    } else if (data.error && typeof data.error === 'string') {
+      errorMsg = data.error;
+    }
+    throw new Error(errorMsg);
   }
   return data;
 }

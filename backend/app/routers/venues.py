@@ -105,6 +105,9 @@ async def get_destination_venues(
 
         for item in generated:
             vid = item["venueId"]
+            existing = await db.get(VenueMetadata, vid)
+            if existing:
+                continue
             v = VenueMetadata(
                 id=vid,
                 name=item["name"],

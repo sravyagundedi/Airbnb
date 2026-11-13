@@ -42,6 +42,30 @@ async def lifespan(app: FastAPI):
             from scripts.seed_venues import seed_venues
             await seed_venues()
 
+    # Seed default demo accounts if they don't exist
+    async with SessionLocal() as db:
+        demo_accounts = [
+            ("leader@warroom.local", "Password123!", "Trip Leader", "leader", 200, ["vegetarian"]),
+            ("planner@warroom.local", "Password123!", "Trip Planner", "planner", 150, ["vegetarian", "gluten-free"]),
+            ("viewer@warroom.local", "Password123!", "Trip Viewer", "viewer", 100, []),
+            ("admin@warroom.local", "Password123!", "System Admin", "admin", 300, []),
+        ]
+        from app.security import hash_password
+        for d_email, d_pwd, d_name, d_role, d_ceiling, d_tags in demo_accounts:
+            stmt = select(User).where(func.lower(User.email) == d_email.lower())
+            exists = (await db.execute(stmt)).scalar_one_or_none()
+            if not exists:
+                u = User(
+                    email=d_email,
+                    password_hash=hash_password(d_pwd),
+                    display_name=d_name,
+                    role=d_role,
+                    budget_ceiling=d_ceiling,
+                    dietary_tags=d_tags
+                )
+                db.add(u)
+        await db.commit()
+
     # Initialize Recommender system
     venues_path = os.path.join(os.path.dirname(__file__), "..", "..", "data", "lisbon_venues.json")
     inter_path = os.path.join(os.path.dirname(__file__), "..", "..", "data", "synthetic_interactions.json")

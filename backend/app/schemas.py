@@ -10,12 +10,20 @@ VALID_ROLES = frozenset({"viewer", "planner", "leader", "admin"})
 
 # --- Auth Schemas ---
 class UserRegisterRequest(BaseModel):
-    email: EmailStr
+    email: str = Field(..., min_length=3, max_length=255)
     password: str = Field(..., min_length=8, description="Password must be at least 8 characters")
     display_name: str = Field(..., min_length=1, max_length=100)
     role: Optional[str] = "planner"
     budget_ceiling: Optional[int] = Field(default=150, ge=0)
     dietary_tags: Optional[List[str]] = Field(default_factory=list)
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        clean = v.strip().lower()
+        if "@" not in clean or "." not in clean.split("@")[-1] or len(clean) < 5:
+            raise ValueError("Invalid email format. Must contain '@' and domain (e.g. user@domain.com or user@warroom.local)")
+        return clean
 
     @field_validator("role")
     @classmethod
@@ -34,8 +42,16 @@ class UserRegisterRequest(BaseModel):
 
 
 class UserLoginRequest(BaseModel):
-    email: EmailStr
+    email: str = Field(..., min_length=3, max_length=255)
     password: str
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        clean = v.strip().lower()
+        if "@" not in clean:
+            raise ValueError("Invalid email format. Must contain '@'")
+        return clean
 
 
 class TokenRefreshRequest(BaseModel):

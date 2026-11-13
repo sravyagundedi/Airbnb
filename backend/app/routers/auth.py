@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from app.db import get_db
 from app.models import User
@@ -18,7 +18,8 @@ router = APIRouter(prefix="/api/v1/auth", tags=["Authentication"])
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 async def register(req: UserRegisterRequest, db: AsyncSession = Depends(get_db)):
-    stmt = select(User).where(User.email == req.email)
+    clean_email = req.email.strip().lower()
+    stmt = select(User).where(func.lower(User.email) == clean_email)
     existing = (await db.execute(stmt)).scalar_one_or_none()
     if existing:
         raise HTTPException(
@@ -27,11 +28,11 @@ async def register(req: UserRegisterRequest, db: AsyncSession = Depends(get_db))
         )
 
     user = User(
-        email=req.email,
+        email=clean_email,
         password_hash=hash_password(req.password),
-        display_name=req.display_name,
+        display_name=req.display_name.strip(),
         role=req.role or "planner",
-        budget_ceiling=req.budget_ceiling or 150,
+        budget_ceiling=req.budget_ceiling if req.budget_ceiling is not None else 150,
         dietary_tags=req.dietary_tags or [],
     )
     db.add(user)
@@ -49,12 +50,13 @@ async def register(req: UserRegisterRequest, db: AsyncSession = Depends(get_db))
 
 @router.post("/login", response_model=TokenResponse)
 async def login(req: UserLoginRequest, db: AsyncSession = Depends(get_db)):
-    stmt = select(User).where(User.email == req.email)
+    clean_email = req.email.strip().lower()
+    stmt = select(User).where(func.lower(User.email) == clean_email)
     user = (await db.execute(stmt)).scalar_one_or_none()
     if not user or not verify_password(req.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password"
+            detail="Invalid email or password. Please check your credentials or register a new account."
         )
 
     access_token = make_access_token(user.id, user.role)

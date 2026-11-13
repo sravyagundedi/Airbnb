@@ -195,7 +195,19 @@ async def dispatch_event(
         async with get_current_session() as db:
             venue = await db.get(VenueMetadata, venue_id)
             if not venue:
+                res = await db.execute(select(VenueMetadata).where(VenueMetadata.id == venue_id))
+                venue = res.scalar_one_or_none()
+            if not venue:
+                await manager.send_to_user(
+                    trip_id=trip_id,
+                    user_id=user.id,
+                    event="trip.action.rejected",
+                    payload={"reason": f"Venue '{venue_id}' not found in catalog."}
+                )
                 return
+
+            tags_res = await db.execute(select(VenueDietaryTag.tag).where(VenueDietaryTag.venue_id == venue.id))
+            dietary_tags = list(tags_res.scalars().all())
 
             db_item = ItineraryItem(
                 trip_id=trip_id,
@@ -226,6 +238,7 @@ async def dispatch_event(
                 pinned_by_user_id=user.id,
                 position_version=1,
                 price_per_person=venue.price_per_person,
+                dietary_tags=dietary_tags,
                 lat=venue.lat,
                 lng=venue.lng
             )

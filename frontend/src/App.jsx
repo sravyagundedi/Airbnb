@@ -25,7 +25,10 @@ export default function App() {
           setCurrentUser(u);
           authStorage.saveTokens(authStorage.getAccessToken(), authStorage.getRefreshToken(), u);
         })
-        .catch(() => authStorage.clear());
+        .catch(() => {
+          authStorage.clear();
+          setCurrentUser(null);
+        });
 
       api.getVenues('Lisbon')
         .then(setVenuesCatalog)

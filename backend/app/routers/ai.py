@@ -62,8 +62,12 @@ async def ask_ai_concierge(
         resolved_c, resolved_d, curr, sym, b_lat, b_lng = resolve_country_and_currency(trip.country, trip.destination)
         gen_places = generate_local_places_for_destination(resolved_d, resolved_c, curr, sym, b_lat, b_lng)
         for gp in gen_places:
+            vid = gp["venueId"]
+            existing = await db.get(VenueMetadata, vid)
+            if existing:
+                continue
             v_obj = VenueMetadata(
-                id=gp["venueId"],
+                id=vid,
                 name=gp["name"],
                 category=gp["category"],
                 price_per_person=float(gp["pricePerPerson"]),
@@ -80,6 +84,8 @@ async def ask_ai_concierge(
                 description=gp.get("description", "")
             )
             db.add(v_obj)
+            for tag in gp.get("dietaryTags", []):
+                db.add(VenueDietaryTag(venue_id=vid, tag=tag.lower()))
         await db.commit()
         # Re-query
         re_res = await db.execute(venues_stmt)
