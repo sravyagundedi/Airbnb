@@ -6,7 +6,7 @@ from app.db import get_db
 from app.models import User
 from app.schemas import (
     UserRegisterRequest, UserLoginRequest, TokenRefreshRequest,
-    TokenResponse, UserResponse
+    TokenResponse, UserResponse, UserUpdateRequest
 )
 from app.security import (
     hash_password, verify_password, make_access_token, make_refresh_token,
@@ -87,4 +87,30 @@ async def refresh_token(req: TokenRefreshRequest, db: AsyncSession = Depends(get
 
 @router.get("/me", response_model=UserResponse)
 async def get_me(user: User = Depends(current_user)):
+    return user
+
+
+@router.patch("/me", response_model=UserResponse)
+async def update_me(
+    req: UserUpdateRequest,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    if req.display_name is not None:
+        user.display_name = req.display_name.strip()
+    if req.budget_ceiling is not None:
+        user.budget_ceiling = req.budget_ceiling
+    if req.dietary_tags is not None:
+        user.dietary_tags = req.dietary_tags
+
+    if req.new_password:
+        if not req.current_password or not verify_password(req.current_password, user.password_hash):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Current password verification failed. Please enter your correct current password."
+            )
+        user.password_hash = hash_password(req.new_password)
+
+    await db.commit()
+    await db.refresh(user)
     return user

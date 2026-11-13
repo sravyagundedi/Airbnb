@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Compass, Key, Mail, User, DollarSign, ShieldAlert } from 'lucide-react';
+import { Compass, Key, Mail, User, DollarSign, ShieldAlert, Eye, EyeOff } from 'lucide-react';
 import { api, authStorage } from '../api';
 
 const DIETARY_OPTIONS = ['vegetarian', 'vegan', 'halal', 'gluten-free'];
@@ -8,6 +8,7 @@ export default function LoginModal({ onLoginSuccess }) {
   const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState('leader@warroom.local');
   const [password, setPassword] = useState('Password123!');
+  const [showPassword, setShowPassword] = useState(false);
   const [displayName, setDisplayName] = useState('Trip Leader');
   const [role, setRole] = useState('leader');
   const [budgetCeiling, setBudgetCeiling] = useState(150);
@@ -17,6 +18,24 @@ export default function LoginModal({ onLoginSuccess }) {
 
   const toggleTag = (tag) => {
     setDietaryTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
+  };
+
+  const handleSwitchTab = (toRegister) => {
+    setIsRegister(toRegister);
+    setError(null);
+    if (toRegister) {
+      if (email.endsWith('@warroom.local')) {
+        setEmail('');
+        setPassword('');
+        setDisplayName('');
+        setRole('planner');
+      }
+    } else {
+      if (!email) {
+        setEmail('leader@warroom.local');
+        setPassword('Password123!');
+      }
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -95,7 +114,7 @@ export default function LoginModal({ onLoginSuccess }) {
         <div style={{ display: 'flex', background: '#F1F3F5', borderRadius: '10px', padding: '3px', marginBottom: '16px' }}>
           <button
             type="button"
-            onClick={() => { setIsRegister(false); setError(null); }}
+            onClick={() => handleSwitchTab(false)}
             style={{
               flex: 1,
               padding: '8px',
@@ -111,7 +130,7 @@ export default function LoginModal({ onLoginSuccess }) {
           </button>
           <button
             type="button"
-            onClick={() => { setIsRegister(true); setError(null); }}
+            onClick={() => handleSwitchTab(true)}
             style={{
               flex: 1,
               padding: '8px',
@@ -223,10 +242,25 @@ export default function LoginModal({ onLoginSuccess }) {
         )}
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          {isRegister && (
+            <div>
+              <label style={{ fontSize: '12px', fontWeight: 700, display: 'block', marginBottom: '4px' }}>Your Full Name</label>
+              <input
+                type="text"
+                placeholder="e.g. Alex Morgan"
+                value={displayName}
+                onChange={e => setDisplayName(e.target.value)}
+                required
+                style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)' }}
+              />
+            </div>
+          )}
+
           <div>
             <label style={{ fontSize: '12px', fontWeight: 700, display: 'block', marginBottom: '4px' }}>Email Address</label>
             <input
               type="email"
+              placeholder={isRegister ? "your.email@example.com" : "you@example.com"}
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
@@ -235,30 +269,44 @@ export default function LoginModal({ onLoginSuccess }) {
           </div>
 
           <div>
-            <label style={{ fontSize: '12px', fontWeight: 700, display: 'block', marginBottom: '4px' }}>Password</label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+              <label style={{ fontSize: '12px', fontWeight: 700 }}>Password</label>
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--text-muted)',
+                  fontSize: '11px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                {showPassword ? <EyeOff size={13} /> : <Eye size={13} />}
+                <span>{showPassword ? 'Hide' : 'Show'}</span>
+              </button>
+            </div>
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
+              placeholder="••••••••"
               value={password}
               onChange={e => setPassword(e.target.value)}
               required
               minLength={8}
               style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)' }}
             />
+            {isRegister && (
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+                Must be at least 8 characters
+              </span>
+            )}
           </div>
 
           {isRegister && (
             <>
-              <div>
-                <label style={{ fontSize: '12px', fontWeight: 700, display: 'block', marginBottom: '4px' }}>Display Name</label>
-                <input
-                  type="text"
-                  value={displayName}
-                  onChange={e => setDisplayName(e.target.value)}
-                  required
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)' }}
-                />
-              </div>
-
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 <div>
                   <label style={{ fontSize: '12px', fontWeight: 700, display: 'block', marginBottom: '4px' }}>Role</label>

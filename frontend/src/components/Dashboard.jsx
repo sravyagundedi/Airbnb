@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Compass, Users, Sparkles, Shield, BarChart3, ArrowRight, DollarSign, Tag, Check, Calendar, Globe } from 'lucide-react';
+import { Plus, Compass, Users, Sparkles, Shield, BarChart3, ArrowRight, DollarSign, Tag, Check, Calendar, Globe, User } from 'lucide-react';
 import { api } from '../api';
 import AdminPanel from './AdminPanel';
 
-export default function Dashboard({ user, onSelectTrip }) {
+export default function Dashboard({ user, onSelectTrip, onOpenProfile }) {
   const [dashboardData, setDashboardData] = useState(null);
   const [recommendations, setRecommendations] = useState([]);
   const [countries, setCountries] = useState([]);
@@ -342,6 +342,28 @@ export default function Dashboard({ user, onSelectTrip }) {
                 )}
               </div>
             </div>
+
+            <button
+              type="button"
+              onClick={onOpenProfile}
+              style={{
+                marginTop: '16px',
+                width: '100%',
+                background: '#F8F9FA',
+                border: '1px solid var(--border)',
+                color: 'var(--text-main)',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                fontSize: '12px',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px'
+              }}
+            >
+              <User size={14} /> Update Preferences & Profile
+            </button>
           </div>
         </div>
       </div>

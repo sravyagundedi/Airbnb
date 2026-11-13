@@ -7,6 +7,7 @@ import ChatPanel from './components/ChatPanel';
 import ConciergePanel from './components/ConciergePanel';
 import VotePanel from './components/VotePanel';
 import LoginModal from './components/LoginModal';
+import ProfileModal from './components/ProfileModal';
 import { useRoomSocket } from './hooks/useRoomSocket';
 import { api, authStorage } from './api';
 import { Sparkles, MessageSquare, AlertCircle, CheckCircle, Info } from 'lucide-react';
@@ -16,6 +17,7 @@ export default function App() {
   const [currentTrip, setCurrentTrip] = useState(null);
   const [venuesCatalog, setVenuesCatalog] = useState([]);
   const [rightPanelTab, setRightPanelTab] = useState('concierge'); // 'concierge' | 'chat'
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   // Load user profile & venues catalog
   useEffect(() => {
@@ -97,6 +99,7 @@ export default function App() {
         activeParticipants={room.activeParticipants}
         onBackToDashboard={() => setCurrentTrip(null)}
         onLogout={handleLogout}
+        onOpenProfile={() => setShowProfileModal(true)}
       />
 
       {/* Main View: Dashboard or Room Canvas */}
@@ -105,6 +108,7 @@ export default function App() {
           <Dashboard
             user={currentUser}
             onSelectTrip={(trip) => setCurrentTrip(trip)}
+            onOpenProfile={() => setShowProfileModal(true)}
           />
         </div>
       ) : (
@@ -212,6 +216,17 @@ export default function App() {
             currency={currentTrip.currency || 'EUR'}
           />
         </div>
+      )}
+
+      {/* User Profile & Account Settings Modal */}
+      {showProfileModal && (
+        <ProfileModal
+          user={currentUser}
+          onClose={() => setShowProfileModal(false)}
+          onUpdateUser={(updated) => {
+            setCurrentUser(updated);
+          }}
+        />
       )}
     </div>
   );

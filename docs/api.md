@@ -34,6 +34,20 @@ Issues a fresh access and refresh token pair given a valid refresh token.
 ### `GET /api/v1/auth/me`
 Returns current authenticated user profile. Requires `Authorization: Bearer <token>`.
 
+### `PATCH /api/v1/auth/me`
+Updates authenticated user profile settings including display name, budget ceiling, dietary restrictions, and password. Requires `Authorization: Bearer <token>`.
+- **Request Body**:
+```json
+{
+  "display_name": "Sarah Connor",
+  "budget_ceiling": 250,
+  "dietary_tags": ["vegetarian", "gluten-free"],
+  "current_password": "Password123!",
+  "new_password": "NewSecretPassword123!"
+}
+```
+- **Response** (`200 OK`): Returns updated `UserResponse`.
+
 ---
 
 ## 2. Trip Rooms Endpoints

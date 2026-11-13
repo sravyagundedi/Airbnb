@@ -1,7 +1,7 @@
 import React from 'react';
 import { Compass, Users, Wifi, WifiOff, LogOut, ArrowLeft, Shield, Copy, Check } from 'lucide-react';
 
-export default function Header({ user, currentTrip, latencyMs, connected, activeParticipants, onBackToDashboard, onLogout }) {
+export default function Header({ user, currentTrip, latencyMs, connected, activeParticipants, onBackToDashboard, onLogout, onOpenProfile }) {
   const [copied, setCopied] = React.useState(false);
 
   const copyInvite = () => {
@@ -138,17 +138,31 @@ export default function Header({ user, currentTrip, latencyMs, connected, active
 
         {/* User Badge */}
         {user && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div
+            onClick={onOpenProfile}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              cursor: 'pointer',
+              padding: '4px 8px',
+              borderRadius: '8px',
+              background: '#F8F9FA',
+              border: '1px solid var(--border)',
+              transition: 'all 0.15s ease'
+            }}
+            title="Click to view & edit your profile details"
+          >
             <div style={{
               width: '32px',
               height: '32px',
               borderRadius: '50%',
-              background: '#222',
+              background: 'var(--primary)',
               color: '#FFF',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontWeight: 700,
+              fontWeight: 800,
               fontSize: '13px'
             }}>
               {user.display_name?.charAt(0).toUpperCase() || 'U'}
@@ -156,7 +170,7 @@ export default function Header({ user, currentTrip, latencyMs, connected, active
             <div>
               <span style={{ fontSize: '13px', fontWeight: 700, display: 'block' }}>{user.display_name}</span>
               <span style={{
-                fontSize: '11px',
+                fontSize: '10px',
                 textTransform: 'uppercase',
                 padding: '1px 6px',
                 borderRadius: '4px',
@@ -164,7 +178,7 @@ export default function Header({ user, currentTrip, latencyMs, connected, active
                 color: user.role === 'admin' ? '#6D28D9' : (user.role === 'leader' ? '#B45309' : '#0369A1'),
                 fontWeight: 700
               }}>
-                {user.role}
+                {user.role} · Profile
               </span>
             </div>
           </div>

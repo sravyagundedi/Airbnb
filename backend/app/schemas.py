@@ -54,6 +54,23 @@ class UserLoginRequest(BaseModel):
         return clean
 
 
+class UserUpdateRequest(BaseModel):
+    display_name: Optional[str] = Field(None, min_length=1, max_length=100)
+    budget_ceiling: Optional[int] = Field(None, ge=0)
+    dietary_tags: Optional[List[str]] = None
+    current_password: Optional[str] = None
+    new_password: Optional[str] = Field(None, min_length=8)
+
+    @field_validator("dietary_tags")
+    @classmethod
+    def validate_dietary_tags(cls, v):
+        if v is not None:
+            for tag in v:
+                if tag not in TAG_VOCABULARY:
+                    raise ValueError(f"Invalid dietary tag '{tag}'. Valid tags: {sorted(TAG_VOCABULARY)}")
+        return v
+
+
 class TokenRefreshRequest(BaseModel):
     refresh_token: str
 
