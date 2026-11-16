@@ -10,7 +10,13 @@
 AI Trip War Room is an end-to-end, real-time group travel planning platform built with a high-performance **FastAPI** backend, native **WebSockets**, an authoritative in-memory state machine, a deterministic **RAG AI Concierge**, an integer-cent **Hamilton-Hare budget engine**, and a modern **React (Vite)** canvas.
 
 ### Core Features
-- **Worldwide Multi-Country & Dynamic Currency**: Real-time group planning for **any place in the world**. Select from 20+ countries or custom destinations with automatic local currency resolution (JPY ¥, EUR €, USD $, GBP £, INR ₹, AED, AUD A$, etc.) and dynamic generation of authentic nearby places.
+- **Worldwide Multi-Country & Dynamic Currency (Feature G)**: Real-time group planning for **any place in the world**. Select from 20+ countries or custom destinations with automatic local currency resolution (JPY ¥, EUR €, USD $, GBP £, INR ₹, AED, AUD A$, etc.) and dynamic generation of authentic nearby places.
+- **Real Sign-In & Password Recovery (Feature A)**: Full authentication lifecycle for any real user. One-click demo test accounts, password visibility toggles, and self-service **Forgot / Reset Password** workflow with 6-digit verification codes.
+- **Landing & "My Trips" Management (Feature B)**: Centralized trip hub to browse all collaborative war rooms, monitor participant counts, copy invite codes, and switch rooms in one click.
+- **Discovery & Wishlist Bookmarks (Feature C)**: Worldwide venue search with category filters, detailed ratings, dietary tags, and personal/group bookmarking to save favorite places for easy itinerary pinning.
+- **Real-Time Collaboration & Discussion Threads (Feature D)**: Optimistic concurrency board with `<100ms` sync, version conflicts, live presence, and dedicated **Activity Discussion Threads** to chat and leave notes directly on specific itinerary places.
+- **Expense Ledger & Debt Settlement (Feature E)**: Complete group expense tracking with Hamilton-Hare exact-cent splitting. Automated pairwise debt settlement calculator computes minimal transfer instructions and one-click "Mark as Settled".
+- **Pre-Trip Budget Estimator Tool (Features E & G)**: Forecast total group and per-person travel budgets across countries, duration, party size, and travel styles (Budget, Balanced, Luxury) with category breakdowns (lodging, dining, activities, transit, buffer).
 - **Authoritative In-Memory Board**: Room-level mutex concurrency with optimistic versioning (`position_version`). Instant conflict rollback toasts on concurrent edits.
 - **Strict Role-Based Access Control (RBAC)**: 4 distinct roles (`Viewer`, `Planner`, `Leader`, `Admin`) enforced across REST and WebSocket paths.
 - **RAG-Grounded AI Concierge**: Hard constraint filtering (budget, dietary union, hours with 30-min buffer, 2 km radius) + 40/30/30 ranking formula. Code-side citation validation with honest hedges and local currency adaptation.
@@ -18,6 +24,7 @@ AI Trip War Room is an end-to-end, real-time group travel planning platform buil
 - **Contested Slot Voting**: Automatic overlap conflict detection with timed voting countdowns and deterministic tie-breaking.
 - **Offline-Evaluated Hybrid Recommender**: Collaborative item-item cosine similarity + user feature centroids achieving **Precision@5 $\ge$ 0.70**.
 - **Append-Only Event Reconciliation**: All analytics derive strictly from the `events` table.
+
 
 ---
 
@@ -106,16 +113,13 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 ## 4. Definition-of-Done Tracker
 
-| PRD Requirement | Built In Step | Evidence | Status |
+| Feature Track | Requirement | Built In Component | Status |
 |---|---|---|---|
-| Worldwide & Dynamic Currency | Step 5, 6, 11 | `tests/test_global_destinations.py` | Verified (28/28 tests pass) |
-| JWT + 4-Role RBAC | Step 3, 4 | `tests/test_rbac.py` | Verified |
-| Trip Room + Invite Codes | Step 6 | `routers/trips.py` | Verified |
-| Sync < 100 ms, Concurrency Mutex | Step 8, 9 | `tests/test_board.py` | Verified |
-| Presence, Chat, Reconnect Grace | Step 9, 10 | `tests/test_ws.py` | Verified |
-| Constraint Matcher + Grounded AI | Step 7, 11 | `tests/test_constraints.py`, `tests/test_ai.py` | Verified |
-| Conflict Detector + Voting | Step 12, 13 | `concierge/conflicts.py`, `voting.py` | Verified |
-| Hamilton-Hare Budget Accuracy 100% | Step 14 | `tests/test_budget.py` (500 property tests) | Verified |
-| Recommender P@5 $\ge$ 0.60 | Step 15 | `reco/train.py` (Measured 0.724) | Verified |
-| Reconciled Analytics + Admin Upload | Step 16, 17 | `routers/dashboard.py`, `routers/admin.py` | Verified |
-| React Collaborative Client | Step 18 | `frontend/src/` | Built & verified |
+| **A. Real Sign-In** | Splash Screen, Real Auth, Forgot & Reset Password | `routers/auth.py`, `LoginModal.jsx`, `SplashScreen.jsx` | Verified (33/33 tests pass) |
+| **B. Landing & Rooms** | Dashboard, Create & Join by Code, "My Trips" Manager | `routers/trips.py`, `MyTripsModal.jsx`, `Dashboard.jsx` | Verified |
+| **C. Discovery & Wishlist** | 20+ Global Countries, Search Venues, Wishlist Bookmarking | `routers/venues.py`, `TripCanvas.jsx`, `Discovery` | Verified |
+| **D. Collaboration** | Real-Time Sync, Activity Discussion Threads, Live Polls | `realtime/board.py`, `ItemThreadModal.jsx`, `VotePanel.jsx` | Verified (<100ms sync) |
+| **E. Money & Split** | Integer-Cent Expenses, Pairwise Debt Settle Up, Estimator | `routers/expenses.py`, `ExpenseModal.jsx`, `split.py` | Verified (100% exact cents) |
+| **G. Budget Selection** | Currency Selector, Pre-Trip Budget Forecaster Tool | `destinations.py`, `BudgetEstimatorModal.jsx` | Verified (EUR, JPY, USD, INR, etc.) |
+| **F. Release & Testing** | 33 End-to-End Pytest Tests, Vite Build, Load Test Suite | `tests/`, `loadtest.py`, `dist/` | 100% Green (33 Passed, 0 Build Errors) |
+

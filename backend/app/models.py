@@ -178,3 +178,58 @@ class EventLog(Base):
     type = Column(String(100), index=True, nullable=False)
     payload = Column(JSON, default=dict, nullable=False)
     ts = Column(DateTime, default=datetime.datetime.utcnow, nullable=False, index=True)
+
+
+class Expense(Base):
+    __tablename__ = "expenses"
+
+    id = Column(Integer, primary_key=True, index=True)
+    trip_id = Column(Integer, ForeignKey("trips.id", ondelete="CASCADE"), index=True, nullable=False)
+    paid_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    paid_by_name = Column(String(100), nullable=False, default="Traveler")
+    title = Column(String(200), nullable=False)
+    category = Column(String(50), default="dining", nullable=False)
+    amount_cents = Column(Integer, nullable=False)
+    currency = Column(String(10), default="EUR", nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+
+    shares = relationship("ExpenseShare", back_populates="expense", cascade="all, delete-orphan")
+
+
+class ExpenseShare(Base):
+    __tablename__ = "expense_shares"
+
+    id = Column(Integer, primary_key=True, index=True)
+    expense_id = Column(Integer, ForeignKey("expenses.id", ondelete="CASCADE"), index=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_name = Column(String(100), nullable=False, default="Traveler")
+    share_cents = Column(Integer, nullable=False)
+    is_settled = Column(Boolean, default=False, nullable=False)
+
+    expense = relationship("Expense", back_populates="shares")
+
+
+class SavedVenue(Base):
+    __tablename__ = "saved_venues"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+    venue_id = Column(String(50), ForeignKey("venue_metadata.id", ondelete="CASCADE"), index=True, nullable=False)
+    trip_id = Column(Integer, ForeignKey("trips.id", ondelete="CASCADE"), nullable=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+
+    venue = relationship("VenueMetadata")
+
+
+class ItemComment(Base):
+    __tablename__ = "item_comments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    item_id = Column(Integer, ForeignKey("itinerary_items.id", ondelete="CASCADE"), index=True, nullable=False)
+    trip_id = Column(Integer, ForeignKey("trips.id", ondelete="CASCADE"), index=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_name = Column(String(100), nullable=False)
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+

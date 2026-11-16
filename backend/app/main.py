@@ -22,7 +22,8 @@ from app.reco.serve import recommender_service
 from scripts.gen_interactions import generate_synthetic_data
 
 # Import REST routers
-from app.routers import auth, trips, venues, ai, dashboard, admin, health
+from app.routers import auth, trips, venues, ai, dashboard, admin, health, expenses
+
 
 configure_logging(settings.LOG_LEVEL)
 logger = logging.getLogger("warroom.app")
@@ -113,10 +114,12 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(trips.router)
 app.include_router(venues.router)
+app.include_router(expenses.router)
 app.include_router(ai.router)
 app.include_router(dashboard.router)
 app.include_router(admin.router)
 app.include_router(health.router)
+
 
 
 @asynccontextmanager

@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Compass, Key, Mail, User, DollarSign, ShieldAlert, Eye, EyeOff } from 'lucide-react';
+import { Compass, Key, Mail, User, DollarSign, ShieldAlert, Eye, EyeOff, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { api, authStorage } from '../api';
 
 const DIETARY_OPTIONS = ['vegetarian', 'vegan', 'halal', 'gluten-free'];
 
 export default function LoginModal({ onLoginSuccess }) {
-  const [isRegister, setIsRegister] = useState(false);
+  // mode: 'signin' | 'register' | 'forgot'
+  const [mode, setMode] = useState('signin');
   const [email, setEmail] = useState('leader@warroom.local');
   const [password, setPassword] = useState('Password123!');
   const [showPassword, setShowPassword] = useState(false);
@@ -13,6 +14,13 @@ export default function LoginModal({ onLoginSuccess }) {
   const [role, setRole] = useState('leader');
   const [budgetCeiling, setBudgetCeiling] = useState(150);
   const [dietaryTags, setDietaryTags] = useState(['vegetarian']);
+
+  // Forgot password state
+  const [resetCode, setResetCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [codeSent, setCodeSent] = useState(false);
+  const [successMsg, setSuccessMsg] = useState(null);
+
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -20,17 +28,20 @@ export default function LoginModal({ onLoginSuccess }) {
     setDietaryTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
   };
 
-  const handleSwitchTab = (toRegister) => {
-    setIsRegister(toRegister);
+  const handleSwitchMode = (newMode) => {
+    setMode(newMode);
     setError(null);
-    if (toRegister) {
+    setSuccessMsg(null);
+    setCodeSent(false);
+
+    if (newMode === 'register') {
       if (email.endsWith('@warroom.local')) {
         setEmail('');
         setPassword('');
         setDisplayName('');
         setRole('planner');
       }
-    } else {
+    } else if (newMode === 'signin') {
       if (!email) {
         setEmail('leader@warroom.local');
         setPassword('Password123!');
@@ -41,12 +52,12 @@ export default function LoginModal({ onLoginSuccess }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
+    setSuccessMsg(null);
     setLoading(true);
 
     try {
-      let tokens;
-      if (isRegister) {
-        tokens = await api.register({
+      if (mode === 'register') {
+        const tokens = await api.register({
           email: email.trim(),
           password,
           display_name: displayName.trim(),
@@ -54,18 +65,35 @@ export default function LoginModal({ onLoginSuccess }) {
           budget_ceiling: Number(budgetCeiling),
           dietary_tags: dietaryTags
         });
-      } else {
-        tokens = await api.login(email.trim(), password);
+        authStorage.saveTokens(tokens.access_token, tokens.refresh_token);
+        const user = await api.getMe();
+        authStorage.saveTokens(tokens.access_token, tokens.refresh_token, user);
+        onLoginSuccess(user);
+      } else if (mode === 'signin') {
+        const tokens = await api.login(email.trim(), password);
+        authStorage.saveTokens(tokens.access_token, tokens.refresh_token);
+        const user = await api.getMe();
+        authStorage.saveTokens(tokens.access_token, tokens.refresh_token, user);
+        onLoginSuccess(user);
+      } else if (mode === 'forgot') {
+        if (!codeSent) {
+          // Step 1: Request reset code
+          const res = await api.forgotPassword(email.trim());
+          setCodeSent(true);
+          setResetCode(res.reset_code || '');
+          setSuccessMsg(`Reset code generated: ${res.reset_code}. Please enter your new password.`);
+        } else {
+          // Step 2: Reset password
+          const res = await api.resetPassword(email.trim(), resetCode.trim(), newPassword);
+          setSuccessMsg('Password successfully reset! You can now sign in.');
+          setMode('signin');
+          setPassword(newPassword);
+        }
       }
-
-      authStorage.saveTokens(tokens.access_token, tokens.refresh_token);
-      const user = await api.getMe();
-      authStorage.saveTokens(tokens.access_token, tokens.refresh_token, user);
-      onLoginSuccess(user);
     } catch (err) {
       const msg = typeof err === 'string'
         ? err
-        : (err?.message && err.message !== '[object Object]' ? err.message : 'Authentication failed. Please verify your credentials.');
+        : (err?.message && err.message !== '[object Object]' ? err.message : 'Operation failed. Please check your details.');
       setError(msg);
     } finally {
       setLoading(false);
@@ -83,7 +111,7 @@ export default function LoginModal({ onLoginSuccess }) {
     }}>
       <div style={{
         background: '#FFFFFF',
-        width: '440px',
+        width: '460px',
         borderRadius: '20px',
         padding: '36px',
         boxShadow: '0 20px 40px rgba(0,0,0,0.08)',
@@ -110,44 +138,67 @@ export default function LoginModal({ onLoginSuccess }) {
           </p>
         </div>
 
-        {/* Tab switch */}
-        <div style={{ display: 'flex', background: '#F1F3F5', borderRadius: '10px', padding: '3px', marginBottom: '16px' }}>
-          <button
-            type="button"
-            onClick={() => handleSwitchTab(false)}
-            style={{
-              flex: 1,
-              padding: '8px',
-              borderRadius: '8px',
-              fontWeight: 700,
-              fontSize: '13px',
-              background: !isRegister ? '#FFFFFF' : 'transparent',
-              color: !isRegister ? 'var(--text-main)' : 'var(--text-muted)',
-              boxShadow: !isRegister ? '0 2px 4px rgba(0,0,0,0.05)' : 'none'
-            }}
-          >
-            Sign In
-          </button>
-          <button
-            type="button"
-            onClick={() => handleSwitchTab(true)}
-            style={{
-              flex: 1,
-              padding: '8px',
-              borderRadius: '8px',
-              fontWeight: 700,
-              fontSize: '13px',
-              background: isRegister ? '#FFFFFF' : 'transparent',
-              color: isRegister ? 'var(--text-main)' : 'var(--text-muted)',
-              boxShadow: isRegister ? '0 2px 4px rgba(0,0,0,0.05)' : 'none'
-            }}
-          >
-            Create Account
-          </button>
-        </div>
+        {/* Tab switch (only if not in forgot password mode) */}
+        {mode !== 'forgot' ? (
+          <div style={{ display: 'flex', background: '#F1F3F5', borderRadius: '10px', padding: '3px', marginBottom: '16px' }}>
+            <button
+              type="button"
+              onClick={() => handleSwitchMode('signin')}
+              style={{
+                flex: 1,
+                padding: '8px',
+                borderRadius: '8px',
+                fontWeight: 700,
+                fontSize: '13px',
+                background: mode === 'signin' ? '#FFFFFF' : 'transparent',
+                color: mode === 'signin' ? 'var(--text-main)' : 'var(--text-muted)',
+                boxShadow: mode === 'signin' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none'
+              }}
+            >
+              Sign In
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSwitchMode('register')}
+              style={{
+                flex: 1,
+                padding: '8px',
+                borderRadius: '8px',
+                fontWeight: 700,
+                fontSize: '13px',
+                background: mode === 'register' ? '#FFFFFF' : 'transparent',
+                color: mode === 'register' ? 'var(--text-main)' : 'var(--text-muted)',
+                boxShadow: mode === 'register' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none'
+              }}
+            >
+              Create Account
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+            <button
+              type="button"
+              onClick={() => handleSwitchMode('signin')}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                color: 'var(--text-muted)',
+                fontSize: '13px',
+                fontWeight: 600,
+                padding: '4px 0'
+              }}
+            >
+              <ArrowLeft size={16} /> Back to Sign In
+            </button>
+          </div>
+        )}
 
         {/* Quick Demo Switcher */}
-        {!isRegister && (
+        {mode === 'signin' && (
           <div style={{
             background: '#F8F9FA',
             border: '1px solid var(--border)',
@@ -223,6 +274,24 @@ export default function LoginModal({ onLoginSuccess }) {
           </div>
         )}
 
+        {successMsg && (
+          <div style={{
+            background: '#F0FDF4',
+            border: '1px solid #86EFAC',
+            color: '#166534',
+            padding: '10px 12px',
+            borderRadius: '8px',
+            fontSize: '12px',
+            marginBottom: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}>
+            <CheckCircle2 size={16} />
+            <span>{successMsg}</span>
+          </div>
+        )}
+
         {error && (
           <div style={{
             background: '#FEF2F2',
@@ -242,16 +311,16 @@ export default function LoginModal({ onLoginSuccess }) {
         )}
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          {isRegister && (
+          {mode === 'register' && (
             <div>
               <label style={{ fontSize: '12px', fontWeight: 700, display: 'block', marginBottom: '4px' }}>Your Full Name</label>
               <input
                 type="text"
                 placeholder="e.g. Alex Morgan"
                 value={displayName}
-                onChange={e => setDisplayName(e.target.value)}
+                onChange={(e) => setDisplayName(e.target.value)}
                 required
-                style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)' }}
+                style={{ width: '100%', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '14px' }}
               />
             </div>
           )}
@@ -259,101 +328,144 @@ export default function LoginModal({ onLoginSuccess }) {
           <div>
             <label style={{ fontSize: '12px', fontWeight: 700, display: 'block', marginBottom: '4px' }}>Email Address</label>
             <input
-              type="email"
-              placeholder={isRegister ? "your.email@example.com" : "you@example.com"}
+              type="text"
+              placeholder={mode === 'register' ? 'yourname@example.com' : 'user@domain.com or leader@warroom.local'}
               value={email}
-              onChange={e => setEmail(e.target.value)}
+              onChange={(e) => setEmail(e.target.value)}
               required
-              style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)' }}
+              disabled={mode === 'forgot' && codeSent}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                border: '1px solid var(--border)',
+                borderRadius: '8px',
+                fontSize: '14px',
+                background: (mode === 'forgot' && codeSent) ? '#F3F4F6' : '#FFFFFF'
+              }}
             />
           </div>
 
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-              <label style={{ fontSize: '12px', fontWeight: 700 }}>Password</label>
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--text-muted)',
-                  fontSize: '11px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  cursor: 'pointer'
-                }}
-              >
-                {showPassword ? <EyeOff size={13} /> : <Eye size={13} />}
-                <span>{showPassword ? 'Hide' : 'Show'}</span>
-              </button>
+          {mode === 'signin' && (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                <label style={{ fontSize: '12px', fontWeight: 700 }}>Password</label>
+                <button
+                  type="button"
+                  onClick={() => handleSwitchMode('forgot')}
+                  style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Forgot password?
+                </button>
+              </div>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Enter your account password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  style={{ width: '100%', padding: '10px 38px 10px 12px', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '14px' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '10px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
-            <input
-              type={showPassword ? "text" : "password"}
-              placeholder="••••••••"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              required
-              minLength={8}
-              style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)' }}
-            />
-            {isRegister && (
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
-                Must be at least 8 characters
-              </span>
-            )}
-          </div>
+          )}
 
-          {isRegister && (
+          {mode === 'register' && (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                <div>
-                  <label style={{ fontSize: '12px', fontWeight: 700, display: 'block', marginBottom: '4px' }}>Role</label>
-                  <select
-                    value={role}
-                    onChange={e => setRole(e.target.value)}
-                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', textTransform: 'capitalize' }}
-                  >
-                    <option value="planner">Planner</option>
-                    <option value="leader">Leader</option>
-                    <option value="viewer">Viewer</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label style={{ fontSize: '12px', fontWeight: 700, display: 'block', marginBottom: '4px' }}>Budget Ceiling (€)</label>
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 700, display: 'block', marginBottom: '4px' }}>Choose Password</label>
+                <div style={{ position: 'relative' }}>
                   <input
-                    type="number"
-                    value={budgetCeiling}
-                    onChange={e => setBudgetCeiling(e.target.value)}
-                    min={20}
-                    max={500}
-                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)' }}
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Min. 8 characters"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength={8}
+                    style={{ width: '100%', padding: '10px 38px 10px 12px', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '14px' }}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '10px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--text-muted)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
                 </div>
               </div>
 
               <div>
-                <label style={{ fontSize: '12px', fontWeight: 700, display: 'block', marginBottom: '6px' }}>Dietary Constraints</label>
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                <label style={{ fontSize: '12px', fontWeight: 700, display: 'block', marginBottom: '4px' }}>Your Travel Role</label>
+                <select
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '14px' }}
+                >
+                  <option value="planner">📝 Planner (Can edit, pin & suggest)</option>
+                  <option value="leader">👑 Leader (Trip organizer with full rights)</option>
+                  <option value="viewer">👁️ Viewer (Read-only observer)</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 700, display: 'block', marginBottom: '4px' }}>Daily Budget Ceiling</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={budgetCeiling}
+                  onChange={(e) => setBudgetCeiling(e.target.value)}
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '14px' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 700, display: 'block', marginBottom: '6px' }}>Dietary Preferences</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                   {DIETARY_OPTIONS.map(tag => {
                     const active = dietaryTags.includes(tag);
                     return (
                       <button
-                        type="button"
                         key={tag}
+                        type="button"
                         onClick={() => toggleTag(tag)}
                         style={{
-                          fontSize: '11px',
-                          fontWeight: 700,
-                          padding: '4px 8px',
-                          borderRadius: '6px',
-                          background: active ? '#DCFCE7' : '#F1F3F5',
-                          color: active ? '#166534' : '#666',
-                          border: active ? '1px solid #86EFAC' : '1px solid transparent',
-                          textTransform: 'capitalize'
+                          padding: '4px 10px',
+                          borderRadius: '16px',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          background: active ? 'var(--primary)' : '#F1F3F5',
+                          color: active ? '#FFF' : 'var(--text-main)',
+                          border: 'none',
+                          cursor: 'pointer'
                         }}
                       >
                         {tag}
@@ -365,22 +477,76 @@ export default function LoginModal({ onLoginSuccess }) {
             </>
           )}
 
+          {mode === 'forgot' && codeSent && (
+            <>
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 700, display: 'block', marginBottom: '4px' }}>6-Digit Reset Code</label>
+                <input
+                  type="text"
+                  placeholder="Enter 6-digit code"
+                  value={resetCode}
+                  onChange={(e) => setResetCode(e.target.value)}
+                  required
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '14px' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 700, display: 'block', marginBottom: '4px' }}>New Password</label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Min. 8 characters"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    required
+                    minLength={8}
+                    style={{ width: '100%', padding: '10px 38px 10px 12px', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '14px' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '10px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--text-muted)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+
           <button
             type="submit"
             disabled={loading}
             style={{
-              background: 'var(--primary)',
-              color: '#FFFFFF',
+              marginTop: '8px',
               padding: '12px',
               borderRadius: '10px',
-              fontWeight: 800,
-              fontSize: '14px',
-              marginTop: '8px',
+              border: 'none',
+              background: 'var(--primary)',
+              color: '#FFFFFF',
+              fontWeight: 700,
+              fontSize: '15px',
               cursor: loading ? 'not-allowed' : 'pointer',
               opacity: loading ? 0.7 : 1
             }}
           >
-            {loading ? 'Authenticating...' : (isRegister ? 'Register & Enter' : 'Sign In')}
+            {loading ? 'Please wait...' : (
+              mode === 'signin' ? 'Sign In' :
+              mode === 'register' ? 'Create Account & Enter' :
+              (!codeSent ? 'Generate Reset Code' : 'Save New Password & Sign In')
+            )}
           </button>
         </form>
       </div>

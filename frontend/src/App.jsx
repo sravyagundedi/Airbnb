@@ -8,6 +8,11 @@ import ConciergePanel from './components/ConciergePanel';
 import VotePanel from './components/VotePanel';
 import LoginModal from './components/LoginModal';
 import ProfileModal from './components/ProfileModal';
+import MyTripsModal from './components/MyTripsModal';
+import BudgetEstimatorModal from './components/BudgetEstimatorModal';
+import ExpenseModal from './components/ExpenseModal';
+import ItemThreadModal from './components/ItemThreadModal';
+import SplashScreen from './components/SplashScreen';
 import { useRoomSocket } from './hooks/useRoomSocket';
 import { api, authStorage } from './api';
 import { Sparkles, MessageSquare, AlertCircle, CheckCircle, Info } from 'lucide-react';
@@ -18,6 +23,12 @@ export default function App() {
   const [venuesCatalog, setVenuesCatalog] = useState([]);
   const [rightPanelTab, setRightPanelTab] = useState('concierge'); // 'concierge' | 'chat'
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showMyTripsModal, setShowMyTripsModal] = useState(false);
+  const [showBudgetEstimatorModal, setShowBudgetEstimatorModal] = useState(false);
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [showSplashScreen, setShowSplashScreen] = useState(false);
+  const [activeThreadItem, setActiveThreadItem] = useState(null);
+
 
   // Load user profile & venues catalog
   useEffect(() => {
@@ -100,7 +111,13 @@ export default function App() {
         onBackToDashboard={() => setCurrentTrip(null)}
         onLogout={handleLogout}
         onOpenProfile={() => setShowProfileModal(true)}
+        onOpenMyTrips={() => setShowMyTripsModal(true)}
+        onOpenBudgetEstimator={() => setShowBudgetEstimatorModal(true)}
+        onOpenExpenses={() => setShowExpenseModal(true)}
+        onOpenSplash={() => setShowSplashScreen(true)}
       />
+
+
 
       {/* Main View: Dashboard or Room Canvas */}
       {!currentTrip ? (
@@ -126,10 +143,12 @@ export default function App() {
               onUnlock={room.unlockItem}
               onRemove={room.removeItem}
               onOpenVote={room.openVote}
+              onOpenThread={(item) => setActiveThreadItem(item)}
               venuesCatalog={venuesCatalog}
               currencySymbol={currentTrip.currency_symbol || currentTrip.currencySymbol || '€'}
               destination={currentTrip.destination}
             />
+
 
             {/* Right Tabs and Panel (Concierge vs Chat) */}
             <div style={{ display: 'flex', flexDirection: 'column', height: '100%', borderLeft: '1px solid var(--border)' }}>
@@ -228,6 +247,58 @@ export default function App() {
           }}
         />
       )}
+
+      {/* My Collaborative Trips Modal */}
+      <MyTripsModal
+        isOpen={showMyTripsModal}
+        onClose={() => setShowMyTripsModal(false)}
+        currentTripId={currentTrip?.id}
+        onSelectTrip={(t) => setCurrentTrip(t)}
+        onCreateNew={() => {
+          setCurrentTrip(null);
+        }}
+      />
+
+      {/* Pre-Trip Budget Estimator Modal */}
+      <BudgetEstimatorModal
+        isOpen={showBudgetEstimatorModal}
+        onClose={() => setShowBudgetEstimatorModal(false)}
+        defaultCountry={currentTrip?.country || 'Portugal'}
+        defaultDestination={currentTrip?.destination || 'Lisbon'}
+        onApplyBudget={(est) => {
+          // Toast notification
+        }}
+      />
+
+      {/* Expense Ledger & Settle Up Modal */}
+      {currentTrip && (
+        <ExpenseModal
+          isOpen={showExpenseModal}
+          onClose={() => setShowExpenseModal(false)}
+          trip={currentTrip}
+          currentUser={currentUser}
+        />
+      )}
+
+      {/* Activity Item Discussion Thread Modal */}
+      {currentTrip && activeThreadItem && (
+        <ItemThreadModal
+          isOpen={!!activeThreadItem}
+          onClose={() => setActiveThreadItem(null)}
+          trip={currentTrip}
+          item={activeThreadItem}
+          currentUser={currentUser}
+        />
+      )}
+
+      {/* Welcome Splash Screen */}
+      <SplashScreen
+        isOpen={showSplashScreen}
+        onClose={() => setShowSplashScreen(false)}
+        onOpenEstimator={() => setShowBudgetEstimatorModal(true)}
+        onOpenMyTrips={() => setShowMyTripsModal(true)}
+      />
     </div>
   );
 }
+

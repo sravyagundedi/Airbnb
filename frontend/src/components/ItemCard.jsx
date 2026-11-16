@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Lock, Unlock, Vote, Trash2, Clock, DollarSign, Star, MoveRight } from 'lucide-react';
+import { Lock, Unlock, Vote, Trash2, Clock, DollarSign, Star, MoveRight, MessageSquare } from 'lucide-react';
 
 export default function ItemCard({
   item,
@@ -10,9 +10,11 @@ export default function ItemCard({
   onUnlock,
   onRemove,
   onOpenVote,
+  onOpenThread,
   hasConflict,
   currencySymbol = '€'
 }) {
+
   const [editingTime, setEditingTime] = useState(false);
   const [startT, setStartT] = useState(item.startTime || '12:00');
   const [endT, setEndT] = useState(item.endTime || '13:30');
@@ -169,6 +171,28 @@ export default function ItemCard({
 
         {/* Action icons */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          {onOpenThread && (
+            <button
+              onClick={() => onOpenThread(item)}
+              style={{
+                padding: '4px 6px',
+                color: 'var(--primary)',
+                background: '#FFF1F2',
+                borderRadius: '6px',
+                border: '1px solid #FECDD3',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                fontSize: '11px',
+                fontWeight: 700,
+                cursor: 'pointer'
+              }}
+              title="Open Activity Discussion Thread & Comments"
+            >
+              <MessageSquare size={13} /> Thread
+            </button>
+          )}
+
           {item.lifecycleStage !== 'locked' && (
             <button
               onClick={() => setEditingTime(!editingTime)}
@@ -178,6 +202,7 @@ export default function ItemCard({
               <Clock size={14} />
             </button>
           )}
+
 
           {/* Lock / Unlock */}
           {item.lifecycleStage === 'locked' ? (

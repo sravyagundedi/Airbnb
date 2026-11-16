@@ -1,7 +1,21 @@
 import React from 'react';
-import { Compass, Users, Wifi, WifiOff, LogOut, ArrowLeft, Shield, Copy, Check } from 'lucide-react';
+import { Compass, Users, Wifi, WifiOff, LogOut, ArrowLeft, Shield, Copy, Check, Calculator, Receipt, Folder } from 'lucide-react';
 
-export default function Header({ user, currentTrip, latencyMs, connected, activeParticipants, onBackToDashboard, onLogout, onOpenProfile }) {
+export default function Header({
+  user,
+  currentTrip,
+  latencyMs,
+  connected,
+  activeParticipants,
+  onBackToDashboard,
+  onLogout,
+  onOpenProfile,
+  onOpenMyTrips,
+  onOpenBudgetEstimator,
+  onOpenExpenses,
+  onOpenSplash
+}) {
+
   const [copied, setCopied] = React.useState(false);
 
   const copyInvite = () => {
@@ -11,6 +25,7 @@ export default function Header({ user, currentTrip, latencyMs, connected, active
       setTimeout(() => setCopied(false), 2000);
     }
   };
+
 
   const getLatencyColor = (ms) => {
     if (ms === null) return '#A0A0A0';
@@ -101,7 +116,91 @@ export default function Header({ user, currentTrip, latencyMs, connected, active
         )}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        {/* Navigation / Action Shortcuts */}
+        <button
+          onClick={onOpenSplash}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            background: '#FFF1F2',
+            border: '1px solid #FECDD3',
+            padding: '6px 12px',
+            borderRadius: '8px',
+            fontSize: '12px',
+            fontWeight: 700,
+            cursor: 'pointer',
+            color: 'var(--primary)'
+          }}
+          title="Open AI Trip War Room Highlights & Feature Guide"
+        >
+          <Compass size={14} /> Overview
+        </button>
+
+        <button
+          onClick={onOpenMyTrips}
+
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            background: '#F8F9FA',
+            border: '1px solid var(--border)',
+            padding: '6px 12px',
+            borderRadius: '8px',
+            fontSize: '12px',
+            fontWeight: 700,
+            cursor: 'pointer',
+            color: 'var(--text-main)'
+          }}
+          title="View & manage all your collaborative trip rooms"
+        >
+          <Folder size={14} color="var(--primary)" /> My Trips
+        </button>
+
+        <button
+          onClick={onOpenBudgetEstimator}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            background: '#F8F9FA',
+            border: '1px solid var(--border)',
+            padding: '6px 12px',
+            borderRadius: '8px',
+            fontSize: '12px',
+            fontWeight: 700,
+            cursor: 'pointer',
+            color: 'var(--text-main)'
+          }}
+          title="Estimate pre-trip budget across any country and currency"
+        >
+          <Calculator size={14} color="#059669" /> Budget Estimator
+        </button>
+
+        {currentTrip && (
+          <button
+            onClick={onOpenExpenses}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: '#FFF1F2',
+              border: '1px solid #FECDD3',
+              padding: '6px 12px',
+              borderRadius: '8px',
+              fontSize: '12px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              color: 'var(--primary)'
+            }}
+            title="Record expenses & settle debts among travelers"
+          >
+            <Receipt size={14} /> Expenses & Settle
+          </button>
+        )}
+
         {/* Latency & Connectivity indicator */}
         <div style={{
           display: 'flex',
@@ -113,6 +212,7 @@ export default function Header({ user, currentTrip, latencyMs, connected, active
           fontSize: '12px',
           fontWeight: 600
         }}>
+
           {connected ? (
             <>
               <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: getLatencyColor(latencyMs) }} />

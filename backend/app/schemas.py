@@ -232,3 +232,123 @@ class TripAnalytics(BaseModel):
     conflictsFlagged: int
     conflictsResolved: int
     perPersonBreakdown: Dict[int, float]
+
+
+# --- Password Recovery Schemas ---
+class ForgotPasswordRequest(BaseModel):
+    email: str = Field(..., min_length=3, max_length=255)
+
+
+class ResetPasswordRequest(BaseModel):
+    email: str = Field(..., min_length=3, max_length=255)
+    reset_code: str = Field(..., min_length=4, max_length=10)
+    new_password: str = Field(..., min_length=8, description="Password must be at least 8 characters")
+
+
+# --- Expense & Settlement Schemas ---
+class ExpenseCreateRequest(BaseModel):
+    title: str = Field(..., min_length=1, max_length=200)
+    amount: float = Field(..., gt=0, description="Amount in currency units")
+    category: Optional[str] = "dining"
+    paid_by_user_id: Optional[int] = None
+    split_user_ids: Optional[List[int]] = None
+
+
+class ExpenseShareResponse(BaseModel):
+    user_id: int
+    user_name: str
+    share_amount: float
+    is_settled: bool
+
+
+class ExpenseResponse(BaseModel):
+    id: int
+    trip_id: int
+    title: str
+    amount: float
+    currency: str
+    category: str
+    paid_by_user_id: int
+    paid_by_name: str
+    created_at: datetime.datetime
+    shares: List[ExpenseShareResponse] = Field(default_factory=list)
+
+
+class SettlementItem(BaseModel):
+    from_user_id: int
+    from_user_name: str
+    to_user_id: int
+    to_user_name: str
+    amount: float
+    currency: str
+
+
+class ExpenseSummaryResponse(BaseModel):
+    trip_id: int
+    total_expenses: float
+    currency: str
+    category_totals: Dict[str, float]
+    expenses: List[ExpenseResponse]
+    settlement_plan: List[SettlementItem]
+
+
+# --- Pre-Trip Budget Estimator Schemas ---
+class EstimateBudgetRequest(BaseModel):
+    destination: str = "Lisbon"
+    country: Optional[str] = "Portugal"
+    duration_days: int = Field(default=3, ge=1, le=90)
+    travelers_count: int = Field(default=2, ge=1, le=50)
+    travel_style: str = Field(default="balanced", description="budget, balanced, or luxury")
+    currency: Optional[str] = "EUR"
+
+
+class DailyCostBreakdown(BaseModel):
+    lodging: float
+    food: float
+    activities: float
+    transit: float
+    buffer: float
+
+
+class EstimateBudgetResponse(BaseModel):
+    destination: str
+    country: str
+    currency: str
+    currency_symbol: str
+    duration_days: int
+    travelers_count: int
+    travel_style: str
+    daily_per_person: DailyCostBreakdown
+    total_trip_cost: float
+    per_person_total: float
+    category_totals: Dict[str, float]
+    recommendations: List[str]
+
+
+# --- Saved Venues Schemas ---
+class SavedVenueResponse(BaseModel):
+    id: int
+    venue_id: str
+    name: str
+    category: str
+    price_per_person: float
+    rating: float
+    dietary_tags: List[str]
+    notes: Optional[str] = None
+    saved_at: datetime.datetime
+
+
+# --- Item Discussion Comment Schemas ---
+class ItemCommentCreateRequest(BaseModel):
+    content: str = Field(..., min_length=1, max_length=2000)
+
+
+class ItemCommentResponse(BaseModel):
+    id: int
+    item_id: int
+    trip_id: int
+    user_id: int
+    user_name: str
+    content: str
+    created_at: datetime.datetime
+

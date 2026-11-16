@@ -1,3 +1,5 @@
+import datetime
+import secrets
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -6,7 +8,8 @@ from app.db import get_db
 from app.models import User
 from app.schemas import (
     UserRegisterRequest, UserLoginRequest, TokenRefreshRequest,
-    TokenResponse, UserResponse, UserUpdateRequest
+    TokenResponse, UserResponse, UserUpdateRequest,
+    ForgotPasswordRequest, ResetPasswordRequest
 )
 from app.security import (
     hash_password, verify_password, make_access_token, make_refresh_token,
@@ -14,6 +17,10 @@ from app.security import (
 )
 
 router = APIRouter(prefix="/api/v1/auth", tags=["Authentication"])
+
+# In-memory reset code store: email -> (code, expires_at)
+RESET_CODES = {}
+
 
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
@@ -114,3 +121,63 @@ async def update_me(
     await db.commit()
     await db.refresh(user)
     return user
+
+
+@router.post("/forgot-password")
+async def forgot_password(req: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
+    clean_email = req.email.strip().lower()
+    stmt = select(User).where(func.lower(User.email) == clean_email)
+    user = (await db.execute(stmt)).scalar_one_or_none()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No account registered with this email address."
+        )
+
+    code = f"{secrets.randbelow(900000) + 100000}"  # 6-digit code
+    expires = datetime.datetime.utcnow() + datetime.timedelta(minutes=15)
+    RESET_CODES[clean_email] = (code, expires)
+
+    return {
+        "message": "Password reset code generated successfully.",
+        "email": clean_email,
+        "reset_code": code,
+        "expires_in_minutes": 15
+    }
+
+
+@router.post("/reset-password")
+async def reset_password(req: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
+    clean_email = req.email.strip().lower()
+    entry = RESET_CODES.get(clean_email)
+    if not entry:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No active password reset request found for this email. Please request a code first."
+        )
+
+    code, expires = entry
+    if datetime.datetime.utcnow() > expires:
+        RESET_CODES.pop(clean_email, None)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Reset code has expired. Please request a new code."
+        )
+
+    if req.reset_code.strip() != code:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid reset code. Please check and try again."
+        )
+
+    stmt = select(User).where(func.lower(User.email) == clean_email)
+    user = (await db.execute(stmt)).scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
+
+    user.password_hash = hash_password(req.new_password)
+    await db.commit()
+    RESET_CODES.pop(clean_email, None)
+
+    return {"message": "Password has been successfully reset. You may now sign in with your new password."}
+

@@ -91,11 +91,14 @@ export const api = {
   // Auth
   register: (payload) => request('/auth/register', { method: 'POST', body: JSON.stringify(payload) }),
   login: (email, password) => request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  forgotPassword: (email) => request('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
+  resetPassword: (email, reset_code, new_password) =>
+    request('/auth/reset-password', { method: 'POST', body: JSON.stringify({ email, reset_code, new_password }) }),
   getMe: () => request('/auth/me'),
   updateProfile: (payload) => request('/auth/me', { method: 'PATCH', body: JSON.stringify(payload) }),
   getDashboard: () => request('/me/dashboard'),
 
-  // Trips
+  // Trips & Planning
   createTrip: (title, destination = 'Lisbon', country = 'Portugal', currency = 'EUR', maxParticipants = 10) =>
     request('/trips', {
       method: 'POST',
@@ -111,8 +114,20 @@ export const api = {
   getMyTrips: () => request('/trips'),
   getTripMembers: (tripId) => request(`/trips/${tripId}/members`),
   getTripAnalytics: (tripId) => request(`/trips/${tripId}/analytics`),
+  estimateBudget: (payload) => request('/trips/estimate-budget', { method: 'POST', body: JSON.stringify(payload) }),
 
-  // Global Destinations & Venues
+  // Item Comments / Discussion Threads
+  getItemComments: (tripId, itemId) => request(`/trips/${tripId}/items/${itemId}/comments`),
+  addItemComment: (tripId, itemId, content) =>
+    request(`/trips/${tripId}/items/${itemId}/comments`, { method: 'POST', body: JSON.stringify({ content }) }),
+
+  // Expenses & Hamilton-Hare Settlement
+  getExpenses: (tripId) => request(`/trips/${tripId}/expenses`),
+  createExpense: (tripId, payload) =>
+    request(`/trips/${tripId}/expenses`, { method: 'POST', body: JSON.stringify(payload) }),
+  settleExpenses: (tripId) => request(`/trips/${tripId}/expenses/settle`, { method: 'POST' }),
+
+  // Global Destinations, Venues & Wishlist Bookmarks
   getCountries: () => request('/destinations/countries'),
   getVenues: (destination = 'Lisbon', near, radiusKm, category, country) => {
     const params = new URLSearchParams();
@@ -122,6 +137,9 @@ export const api = {
     if (country) params.set('country', country);
     return request(`/destinations/${destination}/venues?${params.toString()}`);
   },
+  saveVenue: (venueId) => request(`/venues/${venueId}/save`, { method: 'POST' }),
+  unsaveVenue: (venueId) => request(`/venues/${venueId}/save`, { method: 'DELETE' }),
+  getSavedVenues: () => request('/venues/saved'),
   getRecommendations: (userId, topK = 6) => request(`/recommendations?top_k=${topK}`),
 
   // AI Concierge
@@ -136,3 +154,4 @@ export const api = {
     request(`/admin/destinations/${destination}/venues`, { method: 'POST', body: JSON.stringify(rows) }),
   triggerRetrain: () => request('/admin/reco/retrain', { method: 'POST' })
 };
+

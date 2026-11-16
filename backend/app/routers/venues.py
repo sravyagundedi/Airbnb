@@ -1,15 +1,18 @@
+import datetime
 from typing import List, Optional, Dict, Any
 from math import cos, radians
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.orm import selectinload
 
 from app.db import get_db
-from app.models import VenueMetadata, VenueDietaryTag
-from app.schemas import VenueResponse, HoursDict, CoordinatesDict
+from app.models import VenueMetadata, VenueDietaryTag, SavedVenue, User
+from app.schemas import VenueResponse, HoursDict, CoordinatesDict, SavedVenueResponse
+from app.security import current_user
 from app.concierge.constraints import haversine_km
 from app.destinations import COUNTRY_DIRECTORY, resolve_country_and_currency, generate_local_places_for_destination
+
 
 router = APIRouter(tags=["Venues"])
 
@@ -158,3 +161,89 @@ async def list_all_venues(db: AsyncSession = Depends(get_db)):
     result = await db.execute(stmt)
     venues = result.scalars().all()
     return [format_venue(v, [t.tag for t in v.dietary_tags]) for v in venues]
+
+
+@router.post("/api/v1/venues/{venue_id}/save", response_model=SavedVenueResponse)
+async def toggle_save_venue(
+    venue_id: str,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    venue = await db.get(VenueMetadata, venue_id)
+    if not venue:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Venue not found")
+
+    stmt = select(SavedVenue).where(SavedVenue.user_id == user.id, SavedVenue.venue_id == venue_id)
+    existing = (await db.execute(stmt)).scalar_one_or_none()
+    if existing:
+        # Already saved, return existing
+        sv = existing
+    else:
+        sv = SavedVenue(
+            user_id=user.id,
+            venue_id=venue_id,
+            created_at=datetime.datetime.utcnow()
+        )
+        db.add(sv)
+        await db.commit()
+        await db.refresh(sv)
+
+    # Fetch tags
+    tag_stmt = select(VenueDietaryTag.tag).where(VenueDietaryTag.venue_id == venue_id)
+    tags = (await db.execute(tag_stmt)).scalars().all()
+
+    return SavedVenueResponse(
+        id=sv.id,
+        venue_id=venue.id,
+        name=venue.name,
+        category=venue.category,
+        price_per_person=venue.price_per_person,
+        rating=venue.rating,
+        dietary_tags=tags,
+        notes=sv.notes,
+        saved_at=sv.created_at
+    )
+
+
+@router.delete("/api/v1/venues/{venue_id}/save")
+async def unsave_venue(
+    venue_id: str,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    stmt = delete(SavedVenue).where(SavedVenue.user_id == user.id, SavedVenue.venue_id == venue_id)
+    await db.execute(stmt)
+    await db.commit()
+    return {"message": "Venue removed from saved places"}
+
+
+@router.get("/api/v1/venues/saved", response_model=List[SavedVenueResponse])
+async def list_saved_venues(
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    stmt = (
+        select(SavedVenue, VenueMetadata)
+        .join(VenueMetadata, SavedVenue.venue_id == VenueMetadata.id)
+        .where(SavedVenue.user_id == user.id)
+        .order_by(SavedVenue.created_at.desc())
+    )
+    results = (await db.execute(stmt)).all()
+
+    out = []
+    for sv, venue in results:
+        tag_stmt = select(VenueDietaryTag.tag).where(VenueDietaryTag.venue_id == venue.id)
+        tags = (await db.execute(tag_stmt)).scalars().all()
+        out.append(SavedVenueResponse(
+            id=sv.id,
+            venue_id=venue.id,
+            name=venue.name,
+            category=venue.category,
+            price_per_person=venue.price_per_person,
+            rating=venue.rating,
+            dietary_tags=tags,
+            notes=sv.notes,
+            saved_at=sv.created_at
+        ))
+    return out
+

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ItemCard from './ItemCard';
-import { Plus, AlertTriangle, Vote, MapPin, Search } from 'lucide-react';
+import { Plus, AlertTriangle, Vote, MapPin, Search, Heart, Sparkles, Bookmark } from 'lucide-react';
+import { api } from '../api';
 
 export default function TripCanvas({
   items,
@@ -13,6 +14,7 @@ export default function TripCanvas({
   onUnlock,
   onRemove,
   onOpenVote,
+  onOpenThread,
   venuesCatalog = [],
   currencySymbol = '€',
   destination = 'Lisbon'
@@ -21,8 +23,49 @@ export default function TripCanvas({
   const [selectedDayForPin, setSelectedDayForPin] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [catalogTab, setCatalogTab] = useState('catalog'); // 'catalog' | 'saved'
+  const [savedVenues, setSavedVenues] = useState([]);
+  const [savedIds, setSavedIds] = useState(new Set());
 
   const days = [1, 2, 3];
+
+  useEffect(() => {
+    if (showCatalogModal) {
+      loadSavedVenues();
+    }
+  }, [showCatalogModal]);
+
+  const loadSavedVenues = async () => {
+    try {
+      const data = await api.getSavedVenues();
+      setSavedVenues(data || []);
+      setSavedIds(new Set((data || []).map(sv => sv.venue_id)));
+    } catch (err) {
+      console.error('Failed to load saved venues:', err);
+    }
+  };
+
+  const handleToggleSave = async (venueId, e) => {
+    e.stopPropagation();
+    try {
+      if (savedIds.has(venueId)) {
+        await api.unsaveVenue(venueId);
+        setSavedIds(prev => {
+          const next = new Set(prev);
+          next.delete(venueId);
+          return next;
+        });
+        setSavedVenues(prev => prev.filter(v => v.venue_id !== venueId));
+      } else {
+        const res = await api.saveVenue(venueId);
+        setSavedIds(prev => new Set(prev).add(venueId));
+        setSavedVenues(prev => [res, ...prev]);
+      }
+    } catch (err) {
+      console.error('Toggle save failed:', err);
+    }
+  };
+
 
   const getItemsForDay = (dayIndex) => {
     return items
@@ -200,9 +243,11 @@ export default function TripCanvas({
                       onUnlock={onUnlock}
                       onRemove={onRemove}
                       onOpenVote={onOpenVote}
+                      onOpenThread={onOpenThread}
                       hasConflict={dayConflicts.some(c => c.itemIds?.includes(item.id))}
                       currencySymbol={currencySymbol}
                     />
+
                   ))
                 )}
               </div>
@@ -238,10 +283,51 @@ export default function TripCanvas({
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <div>
-                <h3 style={{ fontSize: '18px', fontWeight: 800 }}>Pin Lisbon Venue to Day {selectedDayForPin}</h3>
-                <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Select from authentic Lisbon restaurants, sights, and activities.</p>
+                <h3 style={{ fontSize: '18px', fontWeight: 800 }}>Pin {destination} Venue to Day {selectedDayForPin}</h3>
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Explore local restaurants, cultural sights, and activities in {destination}.</p>
               </div>
               <button onClick={() => setShowCatalogModal(false)} style={{ fontSize: '18px', color: '#888' }}>✕</button>
+            </div>
+
+            {/* Catalog vs Saved Places Tabs */}
+            <div style={{ display: 'flex', background: '#F1F3F5', borderRadius: '8px', padding: '3px', marginBottom: '14px' }}>
+              <button
+                onClick={() => setCatalogTab('catalog')}
+                style={{
+                  flex: 1,
+                  padding: '6px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  background: catalogTab === 'catalog' ? '#FFF' : 'transparent',
+                  color: catalogTab === 'catalog' ? 'var(--text-main)' : 'var(--text-muted)',
+                  cursor: 'pointer'
+                }}
+              >
+                Explore Catalog ({venuesCatalog.length})
+              </button>
+              <button
+                onClick={() => setCatalogTab('saved')}
+                style={{
+                  flex: 1,
+                  padding: '6px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  background: catalogTab === 'saved' ? '#FFF' : 'transparent',
+                  color: catalogTab === 'saved' ? 'var(--primary)' : 'var(--text-muted)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '4px'
+                }}
+              >
+                <Heart size={13} fill={catalogTab === 'saved' ? 'var(--primary)' : 'none'} />
+                Saved Wishlist ({savedVenues.length})
+              </button>
             </div>
 
             {/* Filters */}
@@ -272,63 +358,91 @@ export default function TripCanvas({
 
             {/* Venues scroll list */}
             <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', paddingRight: '4px' }}>
-              {filteredVenues.map(v => (
-                <div
-                  key={v.venueId}
-                  style={{
-                    padding: '12px',
-                    borderRadius: '10px',
-                    border: '1px solid var(--border)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    hover: { background: '#F8F9FA' }
-                  }}
-                >
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontWeight: 700, fontSize: '14px' }}>{v.name}</span>
-                      <span style={{ fontSize: '11px', background: '#F0F2F5', padding: '1px 6px', borderRadius: '4px', textTransform: 'capitalize' }}>
-                        {v.category}
-                      </span>
-                      <span style={{ fontSize: '11px', color: '#F59E0B', fontWeight: 700 }}>★ {v.rating}</span>
-                    </div>
-                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                      {v.description?.slice(0, 85)}...
-                    </div>
-                    <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
-                      {v.dietaryTags?.map(tag => (
-                        <span key={tag} style={{ fontSize: '10px', background: '#DCFCE7', color: '#166534', padding: '1px 5px', borderRadius: '4px' }}>
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
+              {(catalogTab === 'catalog' ? filteredVenues : savedVenues).length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
+                  {catalogTab === 'saved' ? 'No saved places in your wishlist yet. Click the heart icon on any venue to save it!' : 'No matching venues found.'}
+                </div>
+              ) : (
+                (catalogTab === 'catalog' ? filteredVenues : savedVenues).map(v => {
+                  const vid = v.venueId || v.venue_id;
+                  const vPrice = v.pricePerPerson ?? v.price_per_person ?? 0;
+                  const vTags = v.dietaryTags || v.dietary_tags || [];
+                  const isSaved = savedIds.has(vid);
 
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
-                    <span style={{ fontWeight: 700, color: '#10B981', fontSize: '14px' }}>
-                      {currencySymbol}
-                      {currencySymbol === '¥' || currencySymbol === '₩'
-                        ? Math.round(Number(v.pricePerPerson || 0)).toLocaleString()
-                        : Number(v.pricePerPerson || 0).toFixed(2)}
-                    </span>
-                    <button
-                      onClick={() => handleQuickPin(v)}
+                  return (
+                    <div
+                      key={vid}
                       style={{
-                        background: 'var(--primary)',
-                        color: '#FFF',
-                        padding: '4px 10px',
-                        borderRadius: '6px',
-                        fontSize: '12px',
-                        fontWeight: 700
+                        padding: '12px',
+                        borderRadius: '10px',
+                        border: '1px solid var(--border)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between'
                       }}
                     >
-                      Pin
-                    </button>
-                  </div>
-                </div>
-              ))}
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontWeight: 700, fontSize: '14px' }}>{v.name}</span>
+                          <span style={{ fontSize: '11px', background: '#F0F2F5', padding: '1px 6px', borderRadius: '4px', textTransform: 'capitalize' }}>
+                            {v.category}
+                          </span>
+                          <span style={{ fontSize: '11px', color: '#F59E0B', fontWeight: 700 }}>★ {v.rating}</span>
+                        </div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                          {(v.description || 'Authentic local venue').slice(0, 85)}...
+                        </div>
+                        <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
+                          {vTags.map(tag => (
+                            <span key={tag} style={{ fontSize: '10px', background: '#DCFCE7', color: '#166534', padding: '1px 5px', borderRadius: '4px' }}>
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <button
+                            onClick={(e) => handleToggleSave(vid, e)}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              cursor: 'pointer',
+                              color: isSaved ? '#EF4444' : '#9CA3AF',
+                              padding: '2px'
+                            }}
+                            title={isSaved ? 'Remove from wishlist' : 'Save to wishlist'}
+                          >
+                            <Heart size={16} fill={isSaved ? '#EF4444' : 'none'} />
+                          </button>
+                          <span style={{ fontWeight: 700, color: '#10B981', fontSize: '14px' }}>
+                            {currencySymbol}
+                            {currencySymbol === '¥' || currencySymbol === '₩'
+                              ? Math.round(Number(vPrice)).toLocaleString()
+                              : Number(vPrice).toFixed(2)}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => handleQuickPin({ ...v, venueId: vid })}
+                          style={{
+                            background: 'var(--primary)',
+                            color: '#FFF',
+                            padding: '4px 10px',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            fontWeight: 700
+                          }}
+                        >
+                          Pin
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
+
           </div>
         </div>
       )}
